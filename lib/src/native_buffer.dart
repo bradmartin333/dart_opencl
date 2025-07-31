@@ -1,12 +1,5 @@
-import 'dart:typed_data';
-
-import 'package:opencl/src/command_queue.dart';
-import 'package:opencl/src/device.dart';
-import 'package:opencl/opencl.dart';
-
 import 'dart:ffi' as ffi;
-
-
+import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffilib;
 

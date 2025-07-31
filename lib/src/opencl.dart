@@ -1,15 +1,11 @@
 import 'dart:ffi' as ffi;
+import 'dart:io' as io show Platform;
 
-import 'dart:io' as io show Platform, Directory;
-//import 'package:opencl/src/constants.dart';
+import 'package:ffi/ffi.dart' as ffilib;
 import 'package:opencl/src/context.dart';
 import 'package:opencl/src/device.dart';
 import 'package:opencl/src/native_cl.dart';
 import 'package:opencl/src/platform.dart';
-
-import 'package:ffi/ffi.dart' as ffilib;
-
-/// OpenCL
 
 class OpenCL extends NativeCL {
   final ffi.DynamicLibrary openCLDynLib;

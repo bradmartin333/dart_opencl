@@ -1,13 +1,10 @@
-library opencl;
-
-
-export 'src/opencl.dart';
-export 'src/native_cl.dart';
-export 'src/platform.dart' hide createPlatform;
-export 'src/device.dart' hide createDevice;
+export 'src/command_queue.dart';
 export 'src/context.dart';
+export 'src/device.dart' hide createDevice;
 export 'src/kernel.dart';
-export 'src/program.dart';
 export 'src/mem.dart';
 export 'src/native_buffer.dart';
-export 'src/command_queue.dart';
+export 'src/native_cl.dart';
+export 'src/opencl.dart';
+export 'src/platform.dart' hide createPlatform;
+export 'src/program.dart';

@@ -1,43 +1,41 @@
-import 'package:opencl/src/event.dart';
-import 'package:opencl/opencl.dart';
-import 'package:opencl/src/native_cl.dart';
-
 import 'dart:ffi' as ffi;
 
-
 import 'package:ffi/ffi.dart' as ffilib;
+import 'package:opencl/opencl.dart';
+import 'package:opencl/src/event.dart';
 
-typedef clEnqueueReadBuffer_type = int Function(
-    cl_command_queue command_queue,
+typedef ClEnqueueReadBufferType = int Function(
+    cl_command_queue commandQueue,
     cl_mem buffer,
-    int blocking_write,
+    int blockingWrite,
     int offset,
     int size,
     ffi.Pointer<ffi.Void> ptr,
-    int num_events_in_wait_list,
-    ffi.Pointer<cl_event> event_wait_list,
+    int numEventsInWaitList,
+    ffi.Pointer<cl_event> eventWaitList,
     ffi.Pointer<cl_event> event);
+
 class CommandQueue {
+  CommandQueue(this.commandQueue, this.dcl);
   cl_command_queue commandQueue;
   OpenCL dcl;
-  CommandQueue(this.commandQueue, this.dcl);
   void retain() {
-    int ret = dcl.clRetainCommandQueue(commandQueue);
+    final ret = dcl.clRetainCommandQueue(commandQueue);
     assert(ret == CL_SUCCESS);
   }
 
   void release() {
-    int ret = dcl.clReleaseCommandQueue(commandQueue);
+    final ret = dcl.clReleaseCommandQueue(commandQueue);
     assert(ret == CL_SUCCESS);
   }
 
   void flush() {
-    int ret = dcl.clFlush(commandQueue);
+    final ret = dcl.clFlush(commandQueue);
     assert(ret == CL_SUCCESS);
   }
 
   void finish() {
-    int ret = dcl.clFinish(commandQueue);
+    final ret = dcl.clFinish(commandQueue);
     assert(ret == CL_SUCCESS);
   }
 
@@ -49,76 +47,75 @@ class CommandQueue {
       List<Event> eventWaitList = const []}) {
     if (globalWorkSize.length != workDimensions) {
       throw ArgumentError(
-          "The length of globalWorkSize does not match workDimensions");
+          'The length of globalWorkSize does not match workDimensions');
     }
 
-    ffi.Pointer<ffi.Size> global_work_size;
-    global_work_size = ffilib.calloc<ffi.Size>(workDimensions);
-    for (int i = 0; i < workDimensions; ++i) {
-      global_work_size[i] = globalWorkSize[i];
+    ffi.Pointer<ffi.Size> globalWorkSizePtr;
+    globalWorkSizePtr = ffilib.calloc<ffi.Size>(workDimensions);
+    for (var i = 0; i < workDimensions; ++i) {
+      globalWorkSizePtr[i] = globalWorkSize[i];
     }
-    ffi.Pointer<ffi.Size> global_work_offset = ffi.nullptr;
+    ffi.Pointer<ffi.Size> globalWorkOffsetPtr = ffi.nullptr;
     if (globalWorkOffset.isNotEmpty) {
       if (globalWorkOffset.length != workDimensions) {
         throw ArgumentError(
-            "The length of globalWorkOffset does not match workDimensions");
+            'The length of globalWorkOffset does not match workDimensions');
       }
-      global_work_offset = ffilib.calloc<ffi.Size>(workDimensions);
-      for (int i = 0; i < workDimensions; ++i) {
-        global_work_offset[i] = globalWorkOffset[i];
+      globalWorkOffsetPtr = ffilib.calloc<ffi.Size>(workDimensions);
+      for (var i = 0; i < workDimensions; ++i) {
+        globalWorkOffsetPtr[i] = globalWorkOffset[i];
       }
     }
-    ffi.Pointer<ffi.Size> local_work_size = ffi.nullptr;
+    ffi.Pointer<ffi.Size> localWorkSizePtr = ffi.nullptr;
     if (localWorkSize.isNotEmpty) {
       if (localWorkSize.length != workDimensions) {
         throw ArgumentError(
-            "The length of globalWorkOffset does not match workDimensions");
+            'The length of globalWorkOffset does not match workDimensions');
       }
-      local_work_size = ffilib.calloc<ffi.Size>(workDimensions);
-      for (int i = 0; i < workDimensions; ++i) {
-        local_work_size[i] = localWorkSize[i];
+      localWorkSizePtr = ffilib.calloc<ffi.Size>(workDimensions);
+      for (var i = 0; i < workDimensions; ++i) {
+        localWorkSizePtr[i] = localWorkSize[i];
       }
     }
 
-    ffi.Pointer<cl_event> event_wait_list = ffi.nullptr;
+    ffi.Pointer<cl_event> eventWaitListPtr = ffi.nullptr;
     if (eventWaitList.isNotEmpty) {
-      event_wait_list =
-          ffilib.calloc<cl_event>(eventWaitList.length);
-      for (int i = 0; i < eventWaitList.length; ++i) {
-        event_wait_list[i] = eventWaitList[i].event;
+      eventWaitListPtr = ffilib.calloc<cl_event>(eventWaitList.length);
+      for (var i = 0; i < eventWaitList.length; ++i) {
+        eventWaitListPtr[i] = eventWaitList[i].event;
       }
     }
     ffi.Pointer<cl_event> event = ffi.nullptr;
     if (createEvent) {
       event = ffilib.calloc<cl_event>();
     }
-    int errcode_ret = dcl.clEnqueueNDRangeKernel(
-        this.commandQueue,
+    final errcodeRet = dcl.clEnqueueNDRangeKernel(
+        commandQueue,
         kernel.kernel,
         workDimensions,
-        global_work_offset,
-        global_work_size,
-        local_work_size,
+        globalWorkOffsetPtr,
+        globalWorkSizePtr,
+        localWorkSizePtr,
         eventWaitList.length,
-        event_wait_list,
+        eventWaitListPtr,
         event);
-    
-    assert(errcode_ret == CL_SUCCESS);
+
+    assert(errcodeRet == CL_SUCCESS);
 
     Event? eventObj;
     if (createEvent) {
       eventObj = Event(event.value, dcl);
     }
 
-    ffilib.calloc.free(global_work_size);
-    if (global_work_offset != ffi.nullptr) {
-      ffilib.calloc.free(global_work_offset);
+    ffilib.calloc.free(globalWorkSizePtr);
+    if (globalWorkOffsetPtr != ffi.nullptr) {
+      ffilib.calloc.free(globalWorkOffsetPtr);
     }
-    if (local_work_size != ffi.nullptr) {
-      ffilib.calloc.free(local_work_size);
+    if (localWorkSizePtr != ffi.nullptr) {
+      ffilib.calloc.free(localWorkSizePtr);
     }
-    if (event_wait_list != ffi.nullptr) {
-      ffilib.calloc.free(event_wait_list);
+    if (eventWaitListPtr != ffi.nullptr) {
+      ffilib.calloc.free(eventWaitListPtr);
     }
     if (event != ffi.nullptr) {
       ffilib.calloc.free(event);
@@ -130,31 +127,30 @@ class CommandQueue {
     List<Event> eventWaitList,
   ) {
     if (eventWaitList.isEmpty) {
-      throw ArgumentError("empty event wait list");
+      throw ArgumentError('empty event wait list');
     }
-    ffi.Pointer<cl_event> event_wait_list;
+    ffi.Pointer<cl_event> eventWaitListPtr;
 
-    event_wait_list =
-        ffilib.calloc<cl_event>(eventWaitList.length);
+    eventWaitListPtr = ffilib.calloc<cl_event>(eventWaitList.length);
 
-    for (int i = 0; i < eventWaitList.length; ++i) {
-      event_wait_list[i] = eventWaitList[i].event;
+    for (var i = 0; i < eventWaitList.length; ++i) {
+      eventWaitListPtr[i] = eventWaitList[i].event;
     }
 
-    int errcode_ret = dcl.clEnqueueWaitForEvents(
-        this.commandQueue, eventWaitList.length, event_wait_list);
-    assert(errcode_ret == CL_SUCCESS);
+    final errcodeRet = dcl.clEnqueueWaitForEvents(
+        commandQueue, eventWaitList.length, eventWaitListPtr);
+    assert(errcodeRet == CL_SUCCESS);
 
-    ffilib.calloc.free(event_wait_list);
+    ffilib.calloc.free(eventWaitListPtr);
 
-    return errcode_ret;
+    return errcodeRet;
   }
 
   Event enqueueMarker() {
     ffi.Pointer<cl_event> event;
     event = ffilib.calloc<cl_event>();
-    int errcode_ret = dcl.clEnqueueMarker(this.commandQueue, event);
-    assert(errcode_ret == CL_SUCCESS);
+    final errcodeRet = dcl.clEnqueueMarker(commandQueue, event);
+    assert(errcodeRet == CL_SUCCESS);
     Event eventObj;
     eventObj = Event(event.value, dcl);
     ffilib.calloc.free(event);
@@ -162,40 +158,46 @@ class CommandQueue {
   }
 
   int enqueueBarrier() {
-    int errcode_ret = dcl.clEnqueueBarrier(this.commandQueue);
-    assert(errcode_ret == CL_SUCCESS);
-    return errcode_ret;
+    final errcodeRet = dcl.clEnqueueBarrier(commandQueue);
+    assert(errcodeRet == CL_SUCCESS);
+    return errcodeRet;
   }
 
   Event? _enqueueReadWriteBufferCommon(Mem buffer, int offset, int size,
-      NativeBuffer ptr, clEnqueueReadBuffer_type function,
+      NativeBuffer ptr, ClEnqueueReadBufferType function,
       {bool createEvent = false,
       List<Event> eventWaitList = const [],
       bool blocking = false}) {
-    ffi.Pointer<cl_event> event_wait_list = ffi.nullptr;
+    ffi.Pointer<cl_event> eventWaitListPtr = ffi.nullptr;
     if (eventWaitList.isNotEmpty) {
-      event_wait_list =
-          ffilib.calloc<cl_event>(eventWaitList.length);
-      for (int i = 0; i < eventWaitList.length; ++i) {
-        event_wait_list[i] = eventWaitList[i].event;
+      eventWaitListPtr = ffilib.calloc<cl_event>(eventWaitList.length);
+      for (var i = 0; i < eventWaitList.length; ++i) {
+        eventWaitListPtr[i] = eventWaitList[i].event;
       }
     }
     ffi.Pointer<cl_event> event = ffi.nullptr;
     if (createEvent) {
       event = ffilib.calloc<cl_event>();
     }
-    int errcode_ret = function(this.commandQueue, buffer.mem, blocking?1:0, offset,
-        size, ptr.ptr.cast(), eventWaitList.length, event_wait_list, event);
-    print("read errcode : $errcode_ret");
-    assert(errcode_ret == CL_SUCCESS);
+    final errcodeRet = function(
+        commandQueue,
+        buffer.mem,
+        blocking ? 1 : 0,
+        offset,
+        size,
+        ptr.ptr.cast(),
+        eventWaitList.length,
+        eventWaitListPtr,
+        event);
+    assert(errcodeRet == CL_SUCCESS);
 
     Event? eventObj;
     if (createEvent) {
       eventObj = Event(event.value, dcl);
     }
 
-    if (event_wait_list != ffi.nullptr) {
-      ffilib.calloc.free(event_wait_list);
+    if (eventWaitListPtr != ffi.nullptr) {
+      ffilib.calloc.free(eventWaitListPtr);
     }
     if (event != ffi.nullptr) {
       ffilib.calloc.free(event);

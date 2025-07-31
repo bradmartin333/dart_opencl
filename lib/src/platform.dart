@@ -1,12 +1,8 @@
-import 'package:opencl/src/device.dart';
-import 'package:opencl/opencl.dart';
-
 import 'dart:ffi' as ffi;
 
-
-
+import 'package:opencl/src/device.dart';
+import 'package:opencl/opencl.dart';
 import 'package:ffi/ffi.dart' as ffilib;
-import 'package:opencl/src/native_cl.dart';
 
 class Platform {
   cl_platform_id platform;

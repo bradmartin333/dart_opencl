@@ -1,15 +1,7 @@
-import 'package:opencl/src/command_queue.dart';
-import 'package:opencl/src/device.dart';
-import 'package:opencl/opencl.dart';
-
 import 'dart:ffi' as ffi;
 
-
+import 'package:opencl/opencl.dart';
 import 'package:ffi/ffi.dart' as ffilib;
-import 'package:opencl/src/mem.dart';
-import 'package:opencl/src/native_buffer.dart';
-import 'package:opencl/src/native_cl.dart';
-import 'package:opencl/src/program.dart';
 
 class Context {
   cl_context context;
