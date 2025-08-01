@@ -289,14 +289,14 @@ __kernel void convert_float_to_half(__global const float *A, __global half *B) {
 
   test('convert half to float', () {
     const vConvertHalfToFloat = '''
-__kernel void convert_half_to_float(__global const half *A, __global float *C) {
+__kernel void convert_half_to_float(__global const half *A, __global float *B) {
   int i = get_global_id(0);
-  C[i] = vload_half(i, A);
+  B[i] = vload_half(i, A);
 }
 ''';
 
     final aBuf = NativeBuffer(sizeOfHalf);
-    final cBuf = NativeBuffer(sizeOfFloat);
+    final bBuf = NativeBuffer(sizeOfFloat);
 
     final aList = aBuf.byteBuffer.asByteData();
     final halfA = float32ToFloat16Bits(123.456);
@@ -304,8 +304,8 @@ __kernel void convert_half_to_float(__global const half *A, __global float *C) {
 
     final aMem = context.createBuffer(aBuf.size,
         hostData: aBuf, onlyCopy: true, kernelRead: true);
-    final cMem =
-        context.createBuffer(cBuf.size, kernelWrite: true, hostRead: true);
+    final bMem =
+        context.createBuffer(bBuf.size, kernelWrite: true, hostRead: true);
 
     final vConvertHalfToFloatProg =
         context.createProgramWithSource([vConvertHalfToFloat]);
@@ -314,12 +314,12 @@ __kernel void convert_half_to_float(__global const half *A, __global float *C) {
     final vConvertHalfToFloatKernel =
         vConvertHalfToFloatProg.createKernel('convert_half_to_float')
           ..setKernelArgMem(0, aMem)
-          ..setKernelArgMem(1, cMem);
+          ..setKernelArgMem(1, bMem);
 
     queue
       ..enqueueNDRangeKernel(vConvertHalfToFloatKernel, 1,
           globalWorkSize: [1], localWorkSize: [1])
-      ..enqueueReadBuffer(cMem, 0, cBuf.size, cBuf, blocking: true)
+      ..enqueueReadBuffer(bMem, 0, bBuf.size, bBuf, blocking: true)
       ..flush()
       ..finish()
       ..release();
@@ -327,11 +327,11 @@ __kernel void convert_half_to_float(__global const half *A, __global float *C) {
     vConvertHalfToFloatProg.release();
     aMem.release();
 
-    final cList = cBuf.byteBuffer.asByteData();
-    final result = cList.getFloat32(0, Endian.little);
+    final bList = bBuf.byteBuffer.asByteData();
+    final result = bList.getFloat32(0, Endian.little);
 
     aBuf.free();
-    cBuf.free();
+    bBuf.free();
 
     // The half-to-float conversion should be lossless,
     // so we expect a near-perfect match
