@@ -1,10 +1,12 @@
+// ignore_for_file: avoid_print for example
+
 import 'dart:ffi';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:opencl/opencl.dart';
 
-String vMatMulVecKern = """
+String vMatMulVecKern = '''
 __kernel void mat_mul_vec(const int N,__global const float4 *mat, __global const float4 *vec, __local float4* localVec, __global float *result) {
  
     // Get the index of the current element to be processed
@@ -30,80 +32,80 @@ __kernel void mat_mul_vec(const int N,__global const float4 *mat, __global const
     }
     result[gid]=temp.x+temp.y+temp.z+temp.w;
 }
-""";
+''';
 
-const MAT_COLUMNS = 200;
-const MAT_ROWS = 200;
-const SIZEOF_FLOAT = 4;
+const matColumns = 200;
+const matRows = 200;
+const sizeOfFloat = 4;
+
 void main() {
   DynamicLibrary libraryCL;
   try {
     libraryCL = OpenCL.openDynLib();
   } catch (e) {
-    print("could not load OpenCL dynamic library");
-    return;
+    throw Exception('could not load OpenCL dynamic library');
   }
-  final OpenCL cl = OpenCL(libraryCL);
-  List<Platform> platforms = cl.getPlatforms();
+
+  final cl = OpenCL(libraryCL);
+  final platforms = cl.getPlatforms();
   // get first platform with at least one gpu device.
-  Platform gpuPlatform = platforms.firstWhere((platform) =>
-      platform.devices.any((device) => device.type == DeviceType.GPU));
+  final gpuPlatform = platforms.firstWhere((platform) =>
+      platform.devices.any((device) => device.type == DeviceType.gpu));
   //get the first gpu device
-  Device gpuDevice =
-      gpuPlatform.devices.firstWhere((device) => device.type == DeviceType.GPU);
-  print("executing on ${gpuDevice.name}");
-  Context context = cl.createContext([gpuDevice]);
-  CommandQueue queue = context.createCommandQueue(gpuDevice);
-  NativeBuffer matBuf = NativeBuffer(MAT_COLUMNS * MAT_ROWS * SIZEOF_FLOAT);
-  NativeBuffer vecBuf = NativeBuffer(MAT_COLUMNS * SIZEOF_FLOAT);
-  NativeBuffer outBuf = NativeBuffer(MAT_ROWS * SIZEOF_FLOAT);
-  Float32List matList = matBuf.byteBuffer.asFloat32List();
-  Float32List vecList = vecBuf.byteBuffer.asFloat32List();
-  Float32List outList = outBuf.byteBuffer.asFloat32List();
-  Random r = Random();
-  for (int i = 0; i < MAT_COLUMNS * MAT_ROWS; ++i) {
+  final gpuDevice =
+      gpuPlatform.devices.firstWhere((device) => device.type == DeviceType.gpu);
+  print('executing on ${gpuDevice.name}');
+  final context = cl.createContext([gpuDevice]);
+  final queue = context.createCommandQueue(gpuDevice);
+  final matBuf = NativeBuffer(matColumns * matRows * sizeOfFloat);
+  final vecBuf = NativeBuffer(matColumns * sizeOfFloat);
+  final outBuf = NativeBuffer(matRows * sizeOfFloat);
+  final matList = matBuf.byteBuffer.asFloat32List();
+  final vecList = vecBuf.byteBuffer.asFloat32List();
+  final outList = outBuf.byteBuffer.asFloat32List();
+  final r = Random();
+  for (var i = 0; i < matColumns * matRows; ++i) {
     matList[i] = r.nextDouble() * 2 - 1;
   }
-  for (int i = 0; i < MAT_COLUMNS; ++i) {
+  for (var i = 0; i < matColumns; ++i) {
     vecList[i] = r.nextDouble() * 2 - 1;
   }
 
-  //print(aList);
-  //print(bList);
-  print("initialized random array");
-  Mem matMem = context.createBuffer(MAT_COLUMNS * MAT_ROWS * SIZEOF_FLOAT,
-      hostData: matBuf, onlyCopy: true, kernelRead: true, kernelWrite: false);
-  Mem vecMem = context.createBuffer(MAT_COLUMNS * SIZEOF_FLOAT,
-      hostData: vecBuf, onlyCopy: true, kernelRead: true, kernelWrite: false);
-  Mem outMem = context.createBuffer(MAT_ROWS * SIZEOF_FLOAT,
-      kernelRead: false, kernelWrite: true, hostRead: true);
+  print('initialized random array');
+  final matMem = context.createBuffer(matColumns * matRows * sizeOfFloat,
+      hostData: matBuf, onlyCopy: true, kernelRead: true);
+  final vecMem = context.createBuffer(matColumns * sizeOfFloat,
+      hostData: vecBuf, onlyCopy: true, kernelRead: true);
+  final outMem = context.createBuffer(matRows * sizeOfFloat,
+      kernelWrite: true, hostRead: true);
 
-  Program vAddProg = context.createProgramWithSource([vMatMulVecKern]);
-  List<String> buildLogs = [];
-  int buildRet = vAddProg.buildProgram([gpuDevice], "", buildLogs);
+  final vAddProg = context.createProgramWithSource([vMatMulVecKern]);
+  final buildLogs = <String>[];
+  final buildRet = vAddProg.buildProgram([gpuDevice], '', buildLogs);
   if (buildRet == CL_BUILD_PROGRAM_FAILURE) {
     print(buildLogs);
   }
-  Kernel vAddKernel = vAddProg.createKernel("mat_mul_vec");
-  vAddKernel.setKernelArgInt(0, MAT_COLUMNS);
-  vAddKernel.setKernelArgMem(1, matMem);
-  vAddKernel.setKernelArgMem(2, vecMem);
-  vAddKernel.setKernelArgLocal(3, MAT_COLUMNS * SIZEOF_FLOAT);
-  vAddKernel.setKernelArgMem(4, outMem);
-  print("finished compiling");
-  Stopwatch stopwatch = new Stopwatch()..start();
+  final vAddKernel = vAddProg.createKernel('mat_mul_vec')
+    ..setKernelArgInt(0, matColumns)
+    ..setKernelArgMem(1, matMem)
+    ..setKernelArgMem(2, vecMem)
+    ..setKernelArgLocal(3, matColumns * sizeOfFloat)
+    ..setKernelArgMem(4, outMem);
+  print('finished compiling');
+  final stopwatch = Stopwatch()..start();
 
-  queue.enqueueNDRangeKernel(vAddKernel, 1,
-      globalWorkSize: [MAT_ROWS], localWorkSize: [200]);
-  queue.enqueueReadBuffer(outMem, 0, MAT_ROWS * SIZEOF_FLOAT, outBuf,
-      blocking: true);
+  queue
+    ..enqueueNDRangeKernel(vAddKernel, 1,
+        globalWorkSize: [matRows], localWorkSize: [200])
+    ..enqueueReadBuffer(outMem, 0, matRows * sizeOfFloat, outBuf,
+        blocking: true);
   stopwatch.stop();
   print('cl executed in ${stopwatch.elapsed}');
 
-  queue.flush();
-  queue.finish();
-
-  queue.release();
+  queue
+    ..flush()
+    ..finish()
+    ..release();
   vAddKernel.release();
   vAddProg.release();
   matMem.release();
@@ -112,29 +114,30 @@ void main() {
 
   context.release();
 
-  stopwatch.reset();
-  stopwatch.start();
+  stopwatch
+    ..reset()
+    ..start();
 
-  Float32x4List matList4 = matList.buffer.asFloat32x4List();
-  Float32x4List vecList4 = vecList.buffer.asFloat32x4List();
-  Float32List nativeList = Float32List(MAT_ROWS);
+  final matList4 = matList.buffer.asFloat32x4List();
+  final vecList4 = vecList.buffer.asFloat32x4List();
+  final nativeList = Float32List(matRows);
 
-  for (int i = 0; i < MAT_ROWS; ++i) {
-    Float32x4 temp = Float32x4.zero();
-    int rowStart = i * (MAT_COLUMNS ~/ 4);
-    for (int j = 0; j < MAT_COLUMNS / 4; ++j) {
+  for (var i = 0; i < matRows; ++i) {
+    var temp = Float32x4.zero();
+    final rowStart = i * (matColumns ~/ 4);
+    for (var j = 0; j < matColumns / 4; ++j) {
       temp += matList4[rowStart + j] * vecList4[j];
     }
     nativeList[i] = temp.x + temp.y + temp.z + temp.w;
   }
 
   print('native executed in ${stopwatch.elapsed}');
-  /*
-  for (int i = 0; i < MAT_ROWS; ++i) {
+  for (var i = 0; i < matRows; ++i) {
     if (outList[i] != nativeList[i]) {
-      print("$i: ${outList[i]} != ${nativeList[i]} ");
+      print('$i: ${outList[i]} != ${nativeList[i]} ');
     }
-  }*/
+  }
+
   matBuf.free();
   vecBuf.free();
   outBuf.free();

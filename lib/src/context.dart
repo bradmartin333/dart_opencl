@@ -1,40 +1,41 @@
 import 'dart:ffi' as ffi;
 
-import 'package:opencl/opencl.dart';
 import 'package:ffi/ffi.dart' as ffilib;
+import 'package:opencl/opencl.dart';
 
 class Context {
+  Context(this.context, this.dcl);
+
   cl_context context;
   OpenCL dcl;
-  Context(this.context, this.dcl);
 
   /// increments the ref-count of the context
   void retain() {
-    int ret = dcl.clRetainContext(context);
+    final ret = dcl.clRetainContext(context);
     assert(ret == CL_SUCCESS);
   }
 
   void release() {
-    int ret = dcl.clReleaseContext(context);
+    final ret = dcl.clReleaseContext(context);
     assert(ret == CL_SUCCESS);
   }
 
   CommandQueue createCommandQueue(Device device, {bool outOfOrder = false}) {
-    ffi.Pointer<ffi.Int32> errcode_ret = ffilib.calloc<ffi.Int32>();
-    ffi.Pointer<ffi.Uint64> properties =
-        ffilib.calloc<ffi.UnsignedLong>(3).cast();
-    int last_property = 0;
+    final errcodeRet = ffilib.calloc<ffi.Int32>();
+    final properties =
+        ffilib.calloc<ffi.UnsignedLong>(3) as ffi.Pointer<ffi.Uint64>;
+    var lastProperty = 0;
     if (outOfOrder) {
       properties[0] = CL_QUEUE_PROPERTIES;
       properties[1] = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
-      last_property = 2;
+      lastProperty = 2;
     }
-    properties[last_property] = 0;
-    var commandQueue = dcl.clCreateCommandQueueWithProperties(
-        context, device.device, properties, errcode_ret);
-    assert(errcode_ret.value == CL_SUCCESS);
+    properties[lastProperty] = 0;
+    final commandQueue = dcl.clCreateCommandQueueWithProperties(
+        context, device.device, properties, errcodeRet);
+    assert(errcodeRet.value == CL_SUCCESS);
 
-    ffilib.calloc.free(errcode_ret);
+    ffilib.calloc.free(errcodeRet);
     ffilib.calloc.free(properties);
     return CommandQueue(commandQueue, dcl);
   }
@@ -48,21 +49,23 @@ class Context {
       bool hostRead = false,
       bool hostWrite = false}) {
     if (size <= 0) {
-      throw ArgumentError("size must be greater than zero");
+      throw ArgumentError('size must be greater than zero');
     }
-    int flags = 0;
+    var flags = 0;
     if (onlyCopy) {
       if (hostData == null) {
         throw ArgumentError(
-            "you must provide non-null hostData while setting onlyCopy");
+            'you must provide non-null hostData while setting onlyCopy');
       }
       flags |= CL_MEM_COPY_HOST_PTR;
     } else if (hostData != null) {
       flags |= CL_MEM_USE_HOST_PTR;
     }
-    // TODO: very complex method.
-    if (hostRead && hostWrite)
-      throw ArgumentError("hostRead and hostWrite are mutually exclusive");
+
+    // TODOvery complex method.
+    if (hostRead && hostWrite) {
+      throw ArgumentError('hostRead and hostWrite are mutually exclusive');
+    }
 
     if (!hostRead && !hostWrite) {
       flags |= CL_MEM_HOST_NO_ACCESS;
@@ -77,41 +80,39 @@ class Context {
       if (kernelRead) flags |= CL_MEM_READ_ONLY;
       if (kernelWrite) flags |= CL_MEM_WRITE_ONLY;
     }
-    ffi.Pointer<ffi.Int32> errcode_ret = ffilib.calloc<ffi.Int32>();
+    final errcodeRet = ffilib.calloc<ffi.Int32>();
 
-    cl_mem memPtr = dcl.clCreateBuffer(this.context, flags,
-        size, hostData?.ptr.cast() ?? ffi.nullptr, errcode_ret);
-    assert(errcode_ret.value == CL_SUCCESS);
+    final memPtr = dcl.clCreateBuffer(
+        context, flags, size, hostData?.ptr.cast() ?? ffi.nullptr, errcodeRet);
+    assert(errcodeRet.value == CL_SUCCESS);
 
-    ffilib.calloc.free(errcode_ret);
+    ffilib.calloc.free(errcodeRet);
 
     return Mem(memPtr, dcl);
   }
 
   Program createProgramWithSource(List<String> strings) {
-    List<ffi.Pointer<ffilib.Utf8>> nativeStrings =
-        strings.map((e) => e.toNativeUtf8()).toList();
+    final nativeStrings = strings.map((e) => e.toNativeUtf8()).toList();
 
-    int count = nativeStrings.length;
-    ffi.Pointer<ffi.Pointer<ffilib.Utf8>> stringsPtr =
-        ffilib.calloc<ffi.Pointer<ffilib.Utf8>>(count).cast();
-    ffi.Pointer<ffi.Size> lengthsPtr = ffilib.calloc<ffi.Size>(count).cast();
-    for (int i = 0; i < count; ++i) {
+    final count = nativeStrings.length;
+    final stringsPtr = ffilib.calloc<ffi.Pointer<ffilib.Utf8>>(count);
+    final lengthsPtr = ffilib.calloc<ffi.Size>(count);
+    for (var i = 0; i < count; ++i) {
       stringsPtr[i] = nativeStrings[i];
       lengthsPtr[i] = strings[i].length;
     }
-    ffi.Pointer<ffi.Int32> errcode_ret = ffilib.calloc<ffi.Int32>();
+    final errcodeRet = ffilib.calloc<ffi.Int32>();
 
-    cl_program program = dcl.clCreateProgramWithSource(
-        this.context, count, stringsPtr.cast(), lengthsPtr, errcode_ret);
+    final program = dcl.clCreateProgramWithSource(
+        context, count, stringsPtr.cast(), lengthsPtr, errcodeRet);
 
-    assert(errcode_ret.value == CL_SUCCESS);
+    assert(errcodeRet.value == CL_SUCCESS);
 
-    ffilib.calloc.free(errcode_ret);
+    ffilib.calloc.free(errcodeRet);
 
-    nativeStrings.forEach((element) {
+    for (final element in nativeStrings) {
       ffilib.calloc.free(element);
-    });
+    }
     ffilib.calloc.free(stringsPtr);
     ffilib.calloc.free(lengthsPtr);
     return Program(program, dcl);

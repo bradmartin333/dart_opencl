@@ -8,6 +8,8 @@ import 'package:opencl/src/native_cl.dart';
 import 'package:opencl/src/platform.dart';
 
 class OpenCL extends NativeCL {
+  OpenCL(this.openCLDynLib) : super(openCLDynLib);
+
   final ffi.DynamicLibrary openCLDynLib;
 
   static ffi.DynamicLibrary openDynLib() {
@@ -20,35 +22,32 @@ class OpenCL extends NativeCL {
     return ffi.DynamicLibrary.open(libraryPath);
   }
 
-  OpenCL(this.openCLDynLib) : super(openCLDynLib);
-
   List<Platform> getPlatforms() {
-    ffi.Pointer<ffi.Uint32> num_platforms = ffilib.calloc<ffi.Uint32>();
-    int ret = clGetPlatformIDs(0, ffi.nullptr, num_platforms);
+    final numPlatforms = ffilib.calloc<ffi.Uint32>();
+    var ret = clGetPlatformIDs(0, ffi.nullptr, numPlatforms);
     assert(ret == CL_SUCCESS);
-    var platforms_list = ffilib.calloc<cl_platform_id>(num_platforms.value);
-    ret = clGetPlatformIDs(num_platforms.value, platforms_list, num_platforms);
+    final platformsList = ffilib.calloc<cl_platform_id>(numPlatforms.value);
+    ret = clGetPlatformIDs(numPlatforms.value, platformsList, numPlatforms);
     assert(ret == CL_SUCCESS);
-    var platforms = List.generate(num_platforms.value,
-        (index) => createPlatform(platforms_list[index], this));
-    ffilib.calloc.free(num_platforms);
-    ffilib.calloc.free(platforms_list);
+    final platforms = List.generate(numPlatforms.value,
+        (index) => createPlatform(platformsList[index], this));
+    ffilib.calloc.free(numPlatforms);
+    ffilib.calloc.free(platformsList);
     return platforms;
   }
 
   Context createContext(List<Device> devices) {
-    ffi.Pointer<ffi.Int32> errcode_ret = ffilib.calloc<ffi.Int32>();
-    ffi.Pointer<cl_device_id> devices_handles =
-        ffilib.calloc<cl_device_id>(devices.length);
-    for (int i = 0; i < devices.length; ++i) {
-      devices_handles[i] = devices[i].device;
+    final errcodeRet = ffilib.calloc<ffi.Int32>();
+    final devicesHandles = ffilib.calloc<cl_device_id>(devices.length);
+    for (var i = 0; i < devices.length; ++i) {
+      devicesHandles[i] = devices[i].device;
     }
 
-    cl_context context = clCreateContext(ffi.nullptr, devices.length,
-        devices_handles, ffi.nullptr, ffi.nullptr, errcode_ret);
-    assert(errcode_ret.value == CL_SUCCESS);
-    ffilib.calloc.free(errcode_ret);
-    ffilib.calloc.free(devices_handles);
+    final context = clCreateContext(ffi.nullptr, devices.length, devicesHandles,
+        ffi.nullptr, ffi.nullptr, errcodeRet);
+    assert(errcodeRet.value == CL_SUCCESS);
+    ffilib.calloc.free(errcodeRet);
+    ffilib.calloc.free(devicesHandles);
     return Context(context, this);
   }
 }

@@ -1,18 +1,18 @@
 import 'package:opencl/opencl.dart';
 
-class Event
-{
+class Event {
+  Event(this.event, this.dcl);
+
   cl_event event;
   OpenCL dcl;
-  Event(this.event, this.dcl);
+
   void retain() {
-    int ret = dcl.clRetainEvent(event);
+    final ret = dcl.clRetainEvent(event);
     assert(ret == CL_SUCCESS);
   }
 
   void release() {
-    int ret = dcl.clReleaseEvent(event);
+    final ret = dcl.clReleaseEvent(event);
     assert(ret == CL_SUCCESS);
   }
 }
-

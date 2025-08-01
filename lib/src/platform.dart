@@ -1,10 +1,13 @@
 import 'dart:ffi' as ffi;
 
-import 'package:opencl/src/device.dart';
-import 'package:opencl/opencl.dart';
 import 'package:ffi/ffi.dart' as ffilib;
+import 'package:opencl/opencl.dart';
+import 'package:opencl/src/device.dart';
 
 class Platform {
+  Platform(this.platform, this.dcl, this.devices, this.profile, this.version,
+      this.name, this.vendor, this.extensions, this.hostTimerResolution);
+
   cl_platform_id platform;
   OpenCL dcl;
   List<Device> devices;
@@ -16,56 +19,52 @@ class Platform {
   /// in nano seconds
   int hostTimerResolution;
   List<String> extensions;
-
-  Platform(this.platform, this.dcl, this.devices, this.profile, this.version,
-      this.name, this.vendor, this.extensions, this.hostTimerResolution);
 }
 
 Platform createPlatform(cl_platform_id platform, OpenCL dcl) {
-  ffi.Pointer<ffi.Uint32> num_devices = ffilib.calloc<ffi.Uint32>();
-  dcl.clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, ffi.nullptr, num_devices);
+  final numDevices = ffilib.calloc<ffi.Uint32>();
+  dcl.clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, ffi.nullptr, numDevices);
 
-  var devices_list =
-      ffilib.calloc<cl_device_id>(num_devices.value);
-  dcl.clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, num_devices.value,
-      devices_list, num_devices);
-  var devices = List.generate(
-      num_devices.value, (index) => createDevice(devices_list[index], dcl));
+  final devicesList = ffilib.calloc<cl_device_id>(numDevices.value);
+  dcl.clGetDeviceIDs(
+      platform, CL_DEVICE_TYPE_ALL, numDevices.value, devicesList, numDevices);
+  final devices = List.generate(
+      numDevices.value, (index) => createDevice(devicesList[index], dcl));
   //free used memory
-  ffilib.calloc.free(num_devices);
-  ffilib.calloc.free(devices_list);
+  ffilib.calloc.free(numDevices);
+  ffilib.calloc.free(devicesList);
   //I hope that's enough...
   const bufsize = 4096;
-  ffi.Pointer<ffilib.Utf8> strbuf = ffilib.calloc<ffi.Int8>(bufsize).cast();
-  var outSize = ffilib.calloc<ffi.Size>();
-  var uLongBuf = ffilib.calloc<ffi.UnsignedLong>();
+  final strbuf = ffilib.calloc<ffi.Int8>(bufsize).cast();
+  final outSize = ffilib.calloc<ffi.Size>();
+  final uLongBuf = ffilib.calloc<ffi.UnsignedLong>();
 
   dcl.clGetPlatformInfo(
       platform, CL_PLATFORM_PROFILE, bufsize, strbuf.cast(), outSize);
-  String profile = strbuf.toDartString();
+  final profile = strbuf.toString();
 
   dcl.clGetPlatformInfo(
       platform, CL_PLATFORM_VERSION, bufsize, strbuf.cast(), outSize);
-  String version = strbuf.toDartString();
+  final version = strbuf.toString();
 
   //get platform name
   dcl.clGetPlatformInfo(
       platform, CL_PLATFORM_NAME, bufsize, strbuf.cast(), outSize);
-  String name = strbuf.toDartString();
+  final name = strbuf.toString();
 
   //get platform vendor
   dcl.clGetPlatformInfo(
       platform, CL_PLATFORM_VENDOR, bufsize, strbuf.cast(), outSize);
-  String vendor = strbuf.toDartString();
+  final vendor = strbuf.toString();
 
   //get platform extensions
   dcl.clGetPlatformInfo(
       platform, CL_PLATFORM_EXTENSIONS, bufsize, strbuf.cast(), outSize);
-  List<String> extensions = strbuf.toDartString().split(RegExp(" [a-zA-Z]"));
+  final extensions = strbuf.toString().split(RegExp(' [a-zA-Z]'));
 
   dcl.clGetPlatformInfo(platform, CL_PLATFORM_HOST_TIMER_RESOLUTION,
       ffi.sizeOf<ffi.UnsignedLong>(), uLongBuf.cast(), outSize);
-  int hostTimerResolution = uLongBuf.value;
+  final hostTimerResolution = uLongBuf.value;
 
   //free used memory
   ffilib.calloc.free(strbuf);

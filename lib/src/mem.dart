@@ -1,16 +1,18 @@
 import 'package:opencl/opencl.dart';
 
 class Mem {
+  Mem(this.mem, this.dcl);
+
   cl_mem mem;
   OpenCL dcl;
-  Mem(this.mem, this.dcl);
+
   void retain() {
-    int ret = dcl.clRetainMemObject(mem);
+    final ret = dcl.clRetainMemObject(mem);
     assert(ret == CL_SUCCESS);
   }
 
   void release() {
-    int ret = dcl.clReleaseMemObject(mem);
+    final ret = dcl.clReleaseMemObject(mem);
     assert(ret == CL_SUCCESS);
   }
 }

@@ -1,9 +1,8 @@
 import 'dart:ffi';
-import 'dart:typed_data';
 
 import 'package:opencl/opencl.dart';
 
-String vAdd_kernel = """
+const String vAddKernelDef = '''
 __kernel void vector_add(__global const int *A, __global const int *B, __global int *C) {
  
     // Get the index of the current element to be processed
@@ -13,67 +12,62 @@ __kernel void vector_add(__global const int *A, __global const int *B, __global 
     C[i] = A[i] + B[i];
 
 }
-""";
-const LIST_SIZE = 1024;
-const SIZEOF_INT32 = 4;
+''';
+
+const listSize = 1024;
+const sizeOfInt32 = 4;
 
 void main() {
   DynamicLibrary libraryCL;
   try {
     libraryCL = OpenCL.openDynLib();
   } catch (e) {
-    print("could not load OpenCL dynamic library");
-    return;
+    throw Exception('could not load OpenCL dynamic library');
   }
-  final OpenCL cl = OpenCL(libraryCL);
-  
-  List<Platform> platforms = cl.getPlatforms();
-  // get first platform with at least one gpu device.
-  Platform gpuPlatform = platforms.firstWhere((platform) =>
-      platform.devices.any((device) => device.type == DeviceType.GPU));
-  //get the first gpu device
-  Device gpuDevice =
-      gpuPlatform.devices.firstWhere((device) => device.type == DeviceType.GPU);
-  print("executing on ${gpuDevice.name}");
+  final cl = OpenCL(libraryCL);
 
-  Context context = cl.createContext([gpuDevice]);
-  CommandQueue queue = context.createCommandQueue(gpuDevice);
-  NativeBuffer aBuf = NativeBuffer(SIZEOF_INT32 * LIST_SIZE);
-  NativeBuffer bBuf = NativeBuffer(SIZEOF_INT32 * LIST_SIZE);
-  NativeBuffer cBuf = NativeBuffer(SIZEOF_INT32 * LIST_SIZE);
-  Int32List aList = aBuf.byteBuffer.asInt32List();
-  Int32List bList = bBuf.byteBuffer.asInt32List();
-  Int32List cList = cBuf.byteBuffer.asInt32List();
-  for (int i = 0; i < LIST_SIZE; ++i) {
+  final platforms = cl.getPlatforms();
+  // get first platform with at least one gpu device.
+  final gpuPlatform = platforms.firstWhere((platform) =>
+      platform.devices.any((device) => device.type == DeviceType.gpu));
+  //get the first gpu device
+  final gpuDevice =
+      gpuPlatform.devices.firstWhere((device) => device.type == DeviceType.gpu);
+
+  final context = cl.createContext([gpuDevice]);
+  final queue = context.createCommandQueue(gpuDevice);
+  final aBuf = NativeBuffer(sizeOfInt32 * listSize);
+  final bBuf = NativeBuffer(sizeOfInt32 * listSize);
+  final cBuf = NativeBuffer(sizeOfInt32 * listSize);
+  final aList = aBuf.byteBuffer.asInt32List();
+  final bList = bBuf.byteBuffer.asInt32List();
+  final cList = cBuf.byteBuffer.asInt32List();
+  for (var i = 0; i < listSize; ++i) {
     aList[i] = i + 1;
     bList[i] = i * 2;
     cList[i] = -1;
   }
-  print(aList);
-  print(bList);
-  Mem aMem = context.createBuffer(SIZEOF_INT32 * LIST_SIZE,
-      hostData: aBuf, onlyCopy: true, kernelRead: true, kernelWrite: false);
-  Mem bMem = context.createBuffer(SIZEOF_INT32 * LIST_SIZE,
-      hostData: bBuf, onlyCopy: true, kernelRead: true, kernelWrite: false);
-  Mem cMem = context.createBuffer(SIZEOF_INT32 * LIST_SIZE,
-      kernelRead: false, kernelWrite: true, hostRead: true);
+  final aMem = context.createBuffer(sizeOfInt32 * listSize,
+      hostData: aBuf, onlyCopy: true, kernelRead: true);
+  final bMem = context.createBuffer(sizeOfInt32 * listSize,
+      hostData: bBuf, onlyCopy: true, kernelRead: true);
+  final cMem = context.createBuffer(sizeOfInt32 * listSize,
+      kernelWrite: true, hostRead: true);
 
-  Program vAddProg = context.createProgramWithSource([vAdd_kernel]);
-  vAddProg.buildProgram([gpuDevice], "", []);
-  Kernel vAddKernel = vAddProg.createKernel("vector_add");
-  vAddKernel.setKernelArgMem(0, aMem);
-  vAddKernel.setKernelArgMem(1, bMem);
-  vAddKernel.setKernelArgMem(2, cMem);
-  queue.enqueueNDRangeKernel(vAddKernel, 1,
-      globalWorkSize: [LIST_SIZE], localWorkSize: [32]);
-  queue.enqueueReadBuffer(cMem, 0, LIST_SIZE * 4, cBuf, blocking: true);
+  final vAddProg = context.createProgramWithSource([vAddKernelDef])
+    ..buildProgram([gpuDevice], '', []);
+  final vAddKernel = vAddProg.createKernel('vector_add')
+    ..setKernelArgMem(0, aMem)
+    ..setKernelArgMem(1, bMem)
+    ..setKernelArgMem(2, cMem);
+  queue
+    ..enqueueNDRangeKernel(vAddKernel, 1,
+        globalWorkSize: [listSize], localWorkSize: [32])
+    ..enqueueReadBuffer(cMem, 0, listSize * 4, cBuf, blocking: true)
+    ..flush()
+    ..finish()
+    ..release();
 
-  print(cList);
-
-  queue.flush();
-  queue.finish();
-
-  queue.release();
   vAddKernel.release();
   vAddProg.release();
   aMem.release();

@@ -1,26 +1,106 @@
 import 'dart:ffi' as ffi;
 
-import 'package:opencl/opencl.dart';
 import 'package:ffi/ffi.dart' as ffilib;
+import 'package:opencl/opencl.dart';
 
-enum DeviceType { CPU, GPU, ACCEL, CUSTOM }
+enum DeviceType { cpu, gpu, accel, custom }
 
 class DeviceAndHostTimer {
+  DeviceAndHostTimer(this.deviceTimeStamp, this.hostTimeStamp);
+
   int deviceTimeStamp;
   int hostTimeStamp;
-  DeviceAndHostTimer(this.deviceTimeStamp, this.hostTimeStamp);
 }
 
-const deviceTypeMap = {
-  CL_DEVICE_TYPE_CPU: DeviceType.CPU,
-  CL_DEVICE_TYPE_GPU: DeviceType.GPU,
-  CL_DEVICE_TYPE_ACCELERATOR: DeviceType.ACCEL,
-  CL_DEVICE_TYPE_CUSTOM: DeviceType.CUSTOM
+const Map<int, DeviceType> deviceTypeMap = {
+  CL_DEVICE_TYPE_CPU: DeviceType.cpu,
+  CL_DEVICE_TYPE_GPU: DeviceType.gpu,
+  CL_DEVICE_TYPE_ACCELERATOR: DeviceType.accel,
+  CL_DEVICE_TYPE_CUSTOM: DeviceType.custom
 };
 
-enum DeviceMemCacheType { None, ReadOnlyCache, ReadWriteCache }
+enum DeviceMemCacheType { none, readOnlyCache, readWriteCache }
 
 class Device {
+  //TODOAdd missing
+  Device(
+    this.device,
+    this.dcl,
+    this.type,
+    this.profile,
+    this.name,
+    this.vendor,
+    this.maxComputeUnits,
+    this.extensions,
+    this.vendorId,
+    this.maxWorkItemDimensions,
+    this.maxWorkItemSizes,
+    this.maxWorkGroupSize,
+    this.preferredVectorWidthChar,
+    this.preferredVectorWidthShort,
+    this.preferredVectorWidthInt,
+    this.preferredVectorWidthLong,
+    this.preferredVectorWidthFloat,
+    this.preferredVectorWidthDouble,
+    this.preferredVectorWidthHalf,
+    this.nativeVectorWidthChar,
+    this.nativeVectorWidthShort,
+    this.nativeVectorWidthInt,
+    this.nativeVectorWidthLong,
+    this.nativeVectorWidthFloat,
+    this.nativeVectorWidthDouble,
+    this.nativeVectorWidthHalf,
+    this.maxClockFrequency,
+    this.addressBits,
+    this.maxMemAllocSize,
+    // ignore: avoid_positional_boolean_parameters - maybe add later
+    this.imageSupport,
+    this.maxReadImageArgs,
+    this.maxWriteImageArgs,
+    this.maxReadWriteImageArgs,
+    this.ilVersion,
+    this.maxParameterSize,
+    this.image2DMaxWidth,
+    this.image2DMaxHeight,
+    this.image3DMaxWidth,
+    this.image3DMaxHeight,
+    this.image3DMaxDepth,
+    this.imageMaxBufferSize,
+    this.imageMaxArraySize,
+    this.maxSamplers,
+    this.imagePitchAlignment,
+    this.imageBaseAddressAlignment,
+    this.maxPipeArgs,
+    this.pipeMaxActiveReservations,
+    this.pipeMaxPacketSize,
+    this.memBaseAddrAlign,
+    this.fpDenorm,
+    this.fpInfNan,
+    this.fpRoundToNearest,
+    this.fpRoundToZero,
+    this.fpRoundToInf,
+    this.fpFMA,
+    this.fpCorrectlyRoundedDivideSqrt,
+    this.fpSoftFloat,
+    this.dblDenorm,
+    this.dblInfNan,
+    this.dblRoundToNearest,
+    this.dblRoundToZero,
+    this.dblRoundToInf,
+    this.dblFMA,
+    this.dblCorrectlyRoundedDivideSqrt,
+    this.dblSoftFloat,
+    this.globalMemCacheType,
+    this.globalMemCachelineSize,
+    this.globalMemCacheSize,
+    this.globalMemSize,
+    this.maxConstantBufferSize,
+    this.maxConstantArgs,
+    this.maxGlobalVariableSize,
+    this.localMemType,
+    this.localMemSize,
+  );
+
   cl_device_id device;
   OpenCL dcl;
   DeviceType type;
@@ -139,170 +219,91 @@ class Device {
 
   int localMemSize;
 
-  //TODO: Add missing
-
-  Device(
-    this.device,
-    this.dcl,
-    this.type,
-    this.profile,
-    this.name,
-    this.vendor,
-    this.maxComputeUnits,
-    this.extensions,
-    this.vendorId,
-    this.maxWorkItemDimensions,
-    this.maxWorkItemSizes,
-    this.maxWorkGroupSize,
-    this.preferredVectorWidthChar,
-    this.preferredVectorWidthShort,
-    this.preferredVectorWidthInt,
-    this.preferredVectorWidthLong,
-    this.preferredVectorWidthFloat,
-    this.preferredVectorWidthDouble,
-    this.preferredVectorWidthHalf,
-    this.nativeVectorWidthChar,
-    this.nativeVectorWidthShort,
-    this.nativeVectorWidthInt,
-    this.nativeVectorWidthLong,
-    this.nativeVectorWidthFloat,
-    this.nativeVectorWidthDouble,
-    this.nativeVectorWidthHalf,
-    this.maxClockFrequency,
-    this.addressBits,
-    this.maxMemAllocSize,
-    this.imageSupport,
-    this.maxReadImageArgs,
-    this.maxWriteImageArgs,
-    this.maxReadWriteImageArgs,
-    this.ilVersion,
-    this.maxParameterSize,
-    this.image2DMaxWidth,
-    this.image2DMaxHeight,
-    this.image3DMaxWidth,
-    this.image3DMaxHeight,
-    this.image3DMaxDepth,
-    this.imageMaxBufferSize,
-    this.imageMaxArraySize,
-    this.maxSamplers,
-    this.imagePitchAlignment,
-    this.imageBaseAddressAlignment,
-    this.maxPipeArgs,
-    this.pipeMaxActiveReservations,
-    this.pipeMaxPacketSize,
-    this.memBaseAddrAlign,
-    this.fpDenorm,
-    this.fpInfNan,
-    this.fpRoundToNearest,
-    this.fpRoundToZero,
-    this.fpRoundToInf,
-    this.fpFMA,
-    this.fpCorrectlyRoundedDivideSqrt,
-    this.fpSoftFloat,
-    this.dblDenorm,
-    this.dblInfNan,
-    this.dblRoundToNearest,
-    this.dblRoundToZero,
-    this.dblRoundToInf,
-    this.dblFMA,
-    this.dblCorrectlyRoundedDivideSqrt,
-    this.dblSoftFloat,
-    this.globalMemCacheType,
-    this.globalMemCachelineSize,
-    this.globalMemCacheSize,
-    this.globalMemSize,
-    this.maxConstantBufferSize,
-    this.maxConstantArgs,
-    this.maxGlobalVariableSize,
-    this.localMemType,
-    this.localMemSize,
-  );
-
   Map<String, dynamic> toJson() {
     return {
-      "type": type.toString(),
-      "profile": profile,
-      "name": name,
-      "vendor": vendor,
-      "vendorId": vendorId,
-      "maxComputeUnits": maxComputeUnits,
-      "extensions": extensions,
-      "maxWorkItemDimensions": maxWorkItemDimensions,
-      "maxWorkItemSizes": maxWorkItemSizes,
-      "maxWorkGroupSize": maxWorkGroupSize,
-      "preferredVectorWidthChar": preferredVectorWidthChar,
-      "preferredVectorWidthShort": preferredVectorWidthShort,
-      "preferredVectorWidthInt": preferredVectorWidthInt,
-      "preferredVectorWidthLong": preferredVectorWidthLong,
-      "preferredVectorWidthFloat": preferredVectorWidthFloat,
-      "preferredVectorWidthDouble": preferredVectorWidthDouble,
-      "preferredVectorWidthHalf": preferredVectorWidthHalf,
-      "nativeVectorWidthChar": nativeVectorWidthChar,
-      "nativeVectorWidthShort": nativeVectorWidthShort,
-      "nativeVectorWidthInt": nativeVectorWidthInt,
-      "nativeVectorWidthLong": nativeVectorWidthLong,
-      "nativeVectorWidthFloat": nativeVectorWidthFloat,
-      "nativeVectorWidthDouble": nativeVectorWidthDouble,
-      "nativeVectorWidthHalf": nativeVectorWidthHalf,
-      "maxClockFrequency": maxClockFrequency,
-      "addressBits": addressBits,
-      "maxMemAllocSize": maxMemAllocSize,
-      "imageSupport": imageSupport,
-      "maxReadImageArgs": maxReadImageArgs,
-      "maxWriteImageArgs": maxWriteImageArgs,
-      "maxReadWriteImageArgs": maxReadWriteImageArgs,
-      "ilVersion": ilVersion,
-      "maxParameterSize": maxParameterSize,
-      "image2DMaxWidth": image2DMaxWidth,
-      "image2DMaxHeight": image2DMaxHeight,
-      "image3DMaxWidth": image3DMaxWidth,
-      "image3DMaxHeight": image3DMaxHeight,
-      "image3DMaxDepth": image3DMaxDepth,
-      "imageMaxBufferSize": imageMaxBufferSize,
-      "imageMaxArraySize": imageMaxArraySize,
-      "maxSamplers": maxSamplers,
-      "imagePitchAlignment": imagePitchAlignment,
-      "imageBaseAddressAlignment": imageBaseAddressAlignment,
-      "maxPipeArgs": maxPipeArgs,
-      "pipeMaxActiveReservations": pipeMaxActiveReservations,
-      "pipeMaxPacketSize": pipeMaxPacketSize,
-      "memBaseAddrAlign": memBaseAddrAlign,
-      "fpDenorm": fpDenorm,
-      "fpInfNan": fpInfNan,
-      "fpRoundToNearest": fpRoundToNearest,
-      "fpRoundToZero": fpRoundToZero,
-      "fpRoundToInf": fpRoundToInf,
-      "fpFMA": fpFMA,
-      "fpCorrectlyRoundedDivideSqrt": fpCorrectlyRoundedDivideSqrt,
-      "fpSoftFloat": fpSoftFloat,
-      "dblDenorm": dblDenorm,
-      "dblInfNan": dblInfNan,
-      "dblRoundToNearest": dblRoundToNearest,
-      "dblRoundToZero": dblRoundToZero,
-      "dblRoundToInf": dblRoundToInf,
-      "dblFMA": dblFMA,
-      "dblCorrectlyRoundedDivideSqrt": dblCorrectlyRoundedDivideSqrt,
-      "dblSoftFloat": dblSoftFloat,
-      "globalMemCacheType": globalMemCacheType,
-      "globalMemCachelineSize": globalMemCachelineSize,
-      "globalMemCacheSize": globalMemCacheSize,
-      "globalMemSize": globalMemSize,
-      "maxConstantBufferSize": maxConstantBufferSize,
-      "maxConstantArgs": maxConstantArgs,
-      "maxGlobalVariableSize": maxGlobalVariableSize,
-      "localMemType": localMemType,
-      "localMemSize": localMemSize
+      'type': type.toString(),
+      'profile': profile,
+      'name': name,
+      'vendor': vendor,
+      'vendorId': vendorId,
+      'maxComputeUnits': maxComputeUnits,
+      'extensions': extensions,
+      'maxWorkItemDimensions': maxWorkItemDimensions,
+      'maxWorkItemSizes': maxWorkItemSizes,
+      'maxWorkGroupSize': maxWorkGroupSize,
+      'preferredVectorWidthChar': preferredVectorWidthChar,
+      'preferredVectorWidthShort': preferredVectorWidthShort,
+      'preferredVectorWidthInt': preferredVectorWidthInt,
+      'preferredVectorWidthLong': preferredVectorWidthLong,
+      'preferredVectorWidthFloat': preferredVectorWidthFloat,
+      'preferredVectorWidthDouble': preferredVectorWidthDouble,
+      'preferredVectorWidthHalf': preferredVectorWidthHalf,
+      'nativeVectorWidthChar': nativeVectorWidthChar,
+      'nativeVectorWidthShort': nativeVectorWidthShort,
+      'nativeVectorWidthInt': nativeVectorWidthInt,
+      'nativeVectorWidthLong': nativeVectorWidthLong,
+      'nativeVectorWidthFloat': nativeVectorWidthFloat,
+      'nativeVectorWidthDouble': nativeVectorWidthDouble,
+      'nativeVectorWidthHalf': nativeVectorWidthHalf,
+      'maxClockFrequency': maxClockFrequency,
+      'addressBits': addressBits,
+      'maxMemAllocSize': maxMemAllocSize,
+      'imageSupport': imageSupport,
+      'maxReadImageArgs': maxReadImageArgs,
+      'maxWriteImageArgs': maxWriteImageArgs,
+      'maxReadWriteImageArgs': maxReadWriteImageArgs,
+      'ilVersion': ilVersion,
+      'maxParameterSize': maxParameterSize,
+      'image2DMaxWidth': image2DMaxWidth,
+      'image2DMaxHeight': image2DMaxHeight,
+      'image3DMaxWidth': image3DMaxWidth,
+      'image3DMaxHeight': image3DMaxHeight,
+      'image3DMaxDepth': image3DMaxDepth,
+      'imageMaxBufferSize': imageMaxBufferSize,
+      'imageMaxArraySize': imageMaxArraySize,
+      'maxSamplers': maxSamplers,
+      'imagePitchAlignment': imagePitchAlignment,
+      'imageBaseAddressAlignment': imageBaseAddressAlignment,
+      'maxPipeArgs': maxPipeArgs,
+      'pipeMaxActiveReservations': pipeMaxActiveReservations,
+      'pipeMaxPacketSize': pipeMaxPacketSize,
+      'memBaseAddrAlign': memBaseAddrAlign,
+      'fpDenorm': fpDenorm,
+      'fpInfNan': fpInfNan,
+      'fpRoundToNearest': fpRoundToNearest,
+      'fpRoundToZero': fpRoundToZero,
+      'fpRoundToInf': fpRoundToInf,
+      'fpFMA': fpFMA,
+      'fpCorrectlyRoundedDivideSqrt': fpCorrectlyRoundedDivideSqrt,
+      'fpSoftFloat': fpSoftFloat,
+      'dblDenorm': dblDenorm,
+      'dblInfNan': dblInfNan,
+      'dblRoundToNearest': dblRoundToNearest,
+      'dblRoundToZero': dblRoundToZero,
+      'dblRoundToInf': dblRoundToInf,
+      'dblFMA': dblFMA,
+      'dblCorrectlyRoundedDivideSqrt': dblCorrectlyRoundedDivideSqrt,
+      'dblSoftFloat': dblSoftFloat,
+      'globalMemCacheType': globalMemCacheType,
+      'globalMemCachelineSize': globalMemCachelineSize,
+      'globalMemCacheSize': globalMemCacheSize,
+      'globalMemSize': globalMemSize,
+      'maxConstantBufferSize': maxConstantBufferSize,
+      'maxConstantArgs': maxConstantArgs,
+      'maxGlobalVariableSize': maxGlobalVariableSize,
+      'localMemType': localMemType,
+      'localMemSize': localMemSize
     };
   }
 
   DeviceAndHostTimer getDeviceAndHostTimer() {
-    ffi.Pointer<ffi.Uint64> deviceHostBuf =
-        ffilib.calloc<ffi.UnsignedLong>(2).cast();
-    int ret = dcl.clGetDeviceAndHostTimer(
-        device, deviceHostBuf, deviceHostBuf.elementAt(1));
+    final deviceHostBuf =
+        ffilib.calloc<ffi.UnsignedLong>(2) as ffi.Pointer<ffi.Uint64>;
+    final ret =
+        dcl.clGetDeviceAndHostTimer(device, deviceHostBuf, deviceHostBuf + 1);
     assert(ret == CL_SUCCESS);
-    DeviceAndHostTimer timer = DeviceAndHostTimer(
-        deviceHostBuf.value, deviceHostBuf.elementAt(1).value);
+    final timer =
+        DeviceAndHostTimer(deviceHostBuf.value, (deviceHostBuf + 1).value);
     ffilib.calloc.free(deviceHostBuf);
     return timer;
   }
@@ -310,47 +311,44 @@ class Device {
 
 Device createDevice(cl_device_id device, OpenCL dcl) {
   const strBufferSize = 4096;
-  ffi.Pointer<ffilib.Utf8> strbuf =
-      ffilib.calloc<ffi.Int8>(strBufferSize).cast();
-  ffi.Pointer<ffi.UnsignedLong> ulongbuf =
-      ffilib.calloc<ffi.UnsignedLong>().cast();
-  ffi.Pointer<ffi.Uint32> uintbuf = ffilib.calloc<ffi.Uint32>().cast();
-  var outSize = ffilib.calloc<ffi.Size>();
-  var size_tBuffer = ffilib.calloc<ffi.Size>();
+  final strbuf = ffilib.calloc<ffi.Int8>(strBufferSize);
+  final ulongbuf = ffilib.calloc<ffi.UnsignedLong>();
+  final uintbuf = ffilib.calloc<ffi.Uint32>();
+  final outSize = ffilib.calloc<ffi.Size>();
+  final sizeTbuffer = ffilib.calloc<ffi.Size>();
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_TYPE, ffi.sizeOf<ffi.UnsignedLong>(),
       ulongbuf.cast(), outSize);
-  DeviceType type = deviceTypeMap[ulongbuf.value] ?? DeviceType.CUSTOM;
+  final type = deviceTypeMap[ulongbuf.value] ?? DeviceType.custom;
 
   dcl.clGetDeviceInfo(
       device, CL_DEVICE_PROFILE, strBufferSize, strbuf.cast(), outSize);
-  String profile = strbuf.toDartString();
+  final profile = strbuf.toString();
 
   dcl.clGetDeviceInfo(
       device, CL_DEVICE_NAME, strBufferSize, strbuf.cast(), outSize);
-  String name = strbuf.toDartString();
+  final name = strbuf.toString();
 
   dcl.clGetDeviceInfo(
       device, CL_DEVICE_VENDOR, strBufferSize, strbuf.cast(), outSize);
-  String vendor = strbuf.toDartString();
+  final vendor = strbuf.toString();
 
   dcl.clGetDeviceInfo(
       device, CL_DEVICE_EXTENSIONS, strBufferSize, strbuf.cast(), outSize);
-  List<String> extensions = strbuf.toDartString().split(RegExp(" [a-zA-Z]"));
+  final extensions = strbuf.toString().split(RegExp(' [a-zA-Z]'));
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxComputeUnits = uintbuf.value;
+  final maxComputeUnits = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_VENDOR_ID, ffi.sizeOf<ffi.Uint32>(),
       uintbuf.cast(), outSize);
-  int vendorId = uintbuf.value;
+  final vendorId = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxWorkItemDimensions = uintbuf.value;
+  final maxWorkItemDimensions = uintbuf.value;
 
-  ffi.Pointer<ffi.Size> dimensionsBuf =
-      ffilib.calloc<ffi.Size>(maxWorkItemDimensions);
+  final dimensionsBuf = ffilib.calloc<ffi.Size>(maxWorkItemDimensions);
 
   dcl.clGetDeviceInfo(
       device,
@@ -358,92 +356,92 @@ Device createDevice(cl_device_id device, OpenCL dcl) {
       ffi.sizeOf<ffi.Size>() * maxWorkItemDimensions,
       dimensionsBuf.cast(),
       outSize);
-  List<int> maxWorkItemSizes =
-      List.generate(maxWorkItemDimensions, (index) => dimensionsBuf[index]);
+  final maxWorkItemSizes = List<int>.generate(
+      maxWorkItemDimensions, (index) => dimensionsBuf[index]);
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int maxWorkGroupSize = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final maxWorkGroupSize = sizeTbuffer.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthChar = uintbuf.value;
+  final preferredVectorWidthChar = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthShort = uintbuf.value;
+  final preferredVectorWidthShort = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthInt = uintbuf.value;
+  final preferredVectorWidthInt = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthLong = uintbuf.value;
+  final preferredVectorWidthLong = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthFloat = uintbuf.value;
+  final preferredVectorWidthFloat = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthDouble = uintbuf.value;
+  final preferredVectorWidthDouble = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int preferredVectorWidthHalf = uintbuf.value;
+  final preferredVectorWidthHalf = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthChar = uintbuf.value;
+  final nativeVectorWidthChar = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_SHORT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthShort = uintbuf.value;
+  final nativeVectorWidthShort = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_INT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthInt = uintbuf.value;
+  final nativeVectorWidthInt = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_LONG,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthLong = uintbuf.value;
+  final nativeVectorWidthLong = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthFloat = uintbuf.value;
+  final nativeVectorWidthFloat = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthDouble = uintbuf.value;
+  final nativeVectorWidthDouble = uintbuf.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int nativeVectorWidthHalf = uintbuf.value;
+  final nativeVectorWidthHalf = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_CLOCK_FREQUENCY,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxClockFrequency = uintbuf.value;
+  final maxClockFrequency = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_ADDRESS_BITS, ffi.sizeOf<ffi.Uint32>(),
       uintbuf.cast(), outSize);
-  int addressBits = uintbuf.value;
+  final addressBits = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int maxMemAllocSize = ulongbuf.value;
+  final maxMemAllocSize = ulongbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, ffi.sizeOf<ffi.Uint32>(),
       uintbuf.cast(), outSize);
-  bool imageSupport = uintbuf.value != 0;
+  final imageSupport = uintbuf.value != 0;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_READ_IMAGE_ARGS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxReadImageArgs = uintbuf.value;
+  final maxReadImageArgs = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_WRITE_IMAGE_ARGS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxWriteImageArgs = uintbuf.value;
+  final maxWriteImageArgs = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int maxReadWriteImageArgs = uintbuf.value;
+  final maxReadWriteImageArgs = uintbuf.value;
 
   dcl.clGetDeviceInfo(
       device, CL_DEVICE_IL_VERSION, strBufferSize, strbuf.cast(), outSize);
-  String ilVersion = strbuf.toDartString();
+  final ilVersion = strbuf.toString();
 
   /*
   CL_DEVICE_IMAGE2D_MAX_WIDTH
@@ -455,128 +453,127 @@ Device createDevice(cl_device_id device, OpenCL dcl) {
   CL_DEVICE_IMAGE_MAX_ARRAY_SIZE*/
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_PARAMETER_SIZE,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int maxParameterSize = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final maxParameterSize = sizeTbuffer.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE2D_MAX_WIDTH,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int image2DMaxWidth = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final image2DMaxWidth = sizeTbuffer.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE2D_MAX_HEIGHT,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int image2DMaxHeight = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final image2DMaxHeight = sizeTbuffer.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE3D_MAX_WIDTH,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int image3DMaxWidth = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final image3DMaxWidth = sizeTbuffer.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE3D_MAX_HEIGHT,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int image3DMaxHeight = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final image3DMaxHeight = sizeTbuffer.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE3D_MAX_DEPTH,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int image3DMaxDepth = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final image3DMaxDepth = sizeTbuffer.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE_MAX_BUFFER_SIZE,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int imageMaxBufferSize = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final imageMaxBufferSize = sizeTbuffer.value;
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE_MAX_ARRAY_SIZE,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int imageMaxArraySize = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final imageMaxArraySize = sizeTbuffer.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_SAMPLERS, ffi.sizeOf<ffi.Uint32>(),
       uintbuf.cast(), outSize);
-  int maxSamplers = uintbuf.value;
+  final maxSamplers = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE_PITCH_ALIGNMENT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int imagePitchAlignment = uintbuf.value;
+  final imagePitchAlignment = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int imageBaseAddressAlignment = uintbuf.value;
+  final imageBaseAddressAlignment = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_PIPE_ARGS, ffi.sizeOf<ffi.Uint32>(),
       uintbuf.cast(), outSize);
-  int maxPipeArgs = uintbuf.value;
+  final maxPipeArgs = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int pipeMaxActiveReservations = uintbuf.value;
+  final pipeMaxActiveReservations = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_PIPE_MAX_PACKET_SIZE,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int pipeMaxPacketSize = uintbuf.value;
+  final pipeMaxPacketSize = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MEM_BASE_ADDR_ALIGN,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  int memBaseAddrAlign = uintbuf.value;
+  final memBaseAddrAlign = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_SINGLE_FP_CONFIG,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int singleFPConfig = ulongbuf.value;
-  bool fpDenorm = (singleFPConfig & CL_FP_DENORM) != 0;
-  bool fpInfNan = (singleFPConfig & CL_FP_INF_NAN) != 0;
-  bool fpRoundToNearest = (singleFPConfig & CL_FP_ROUND_TO_NEAREST) != 0;
-  bool fpRoundToZero = (singleFPConfig & CL_FP_ROUND_TO_ZERO) != 0;
-  bool fpRoundToInf = (singleFPConfig & CL_FP_ROUND_TO_INF) != 0;
-  bool fpFMA = (singleFPConfig & CL_FP_FMA) != 0;
-  bool fpCorrectlyRoundedDivideSqrt =
+  final singleFPConfig = ulongbuf.value;
+  final fpDenorm = (singleFPConfig & CL_FP_DENORM) != 0;
+  final fpInfNan = (singleFPConfig & CL_FP_INF_NAN) != 0;
+  final fpRoundToNearest = (singleFPConfig & CL_FP_ROUND_TO_NEAREST) != 0;
+  final fpRoundToZero = (singleFPConfig & CL_FP_ROUND_TO_ZERO) != 0;
+  final fpRoundToInf = (singleFPConfig & CL_FP_ROUND_TO_INF) != 0;
+  final fpFMA = (singleFPConfig & CL_FP_FMA) != 0;
+  final fpCorrectlyRoundedDivideSqrt =
       (singleFPConfig & CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT) != 0;
-  bool fpSoftFloat = (singleFPConfig & CL_FP_SOFT_FLOAT) != 0;
+  final fpSoftFloat = (singleFPConfig & CL_FP_SOFT_FLOAT) != 0;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_DOUBLE_FP_CONFIG,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int doubleFPConfig = ulongbuf.value;
-  bool dblDenorm = (doubleFPConfig & CL_FP_DENORM) != 0;
-  bool dblInfNan = (doubleFPConfig & CL_FP_INF_NAN) != 0;
-  bool dblRoundToNearest = (doubleFPConfig & CL_FP_ROUND_TO_NEAREST) != 0;
-  bool dblRoundToZero = (doubleFPConfig & CL_FP_ROUND_TO_ZERO) != 0;
-  bool dblRoundToInf = (doubleFPConfig & CL_FP_ROUND_TO_INF) != 0;
-  bool dblFMA = (doubleFPConfig & CL_FP_FMA) != 0;
-  bool dblCorrectlyRoundedDivideSqrt =
+  final doubleFPConfig = ulongbuf.value;
+  final dblDenorm = (doubleFPConfig & CL_FP_DENORM) != 0;
+  final dblInfNan = (doubleFPConfig & CL_FP_INF_NAN) != 0;
+  final dblRoundToNearest = (doubleFPConfig & CL_FP_ROUND_TO_NEAREST) != 0;
+  final dblRoundToZero = (doubleFPConfig & CL_FP_ROUND_TO_ZERO) != 0;
+  final dblRoundToInf = (doubleFPConfig & CL_FP_ROUND_TO_INF) != 0;
+  final dblFMA = (doubleFPConfig & CL_FP_FMA) != 0;
+  final dblCorrectlyRoundedDivideSqrt =
       (doubleFPConfig & CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT) != 0;
-  bool dblSoftFloat = (doubleFPConfig & CL_FP_SOFT_FLOAT) != 0;
+  final dblSoftFloat = (doubleFPConfig & CL_FP_SOFT_FLOAT) != 0;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_CACHE_TYPE,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  DeviceMemCacheType globalMemCacheType =
-      DeviceMemCacheType.values[uintbuf.value];
+  final globalMemCacheType = DeviceMemCacheType.values[uintbuf.value];
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE,
       ffi.sizeOf<ffi.Int32>(), uintbuf.cast(), outSize);
-  int globalMemCachelineSize = uintbuf.value;
+  final globalMemCachelineSize = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int globalMemCacheSize = ulongbuf.value;
+  final globalMemCacheSize = ulongbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int globalMemSize = ulongbuf.value;
+  final globalMemSize = ulongbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int maxConstantBufferSize = ulongbuf.value;
+  final maxConstantBufferSize = ulongbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_ARGS,
       ffi.sizeOf<ffi.Int32>(), uintbuf.cast(), outSize);
-  int maxConstantArgs = uintbuf.value;
+  final maxConstantArgs = uintbuf.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE,
-      ffi.sizeOf<ffi.Size>(), size_tBuffer.cast(), outSize);
-  int maxGlobalVariableSize = size_tBuffer.value;
+      ffi.sizeOf<ffi.Size>(), sizeTbuffer.cast(), outSize);
+  final maxGlobalVariableSize = sizeTbuffer.value;
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_TYPE,
       ffi.sizeOf<ffi.Uint32>(), uintbuf.cast(), outSize);
-  DeviceMemCacheType localMemType = DeviceMemCacheType.values[uintbuf.value];
+  final localMemType = DeviceMemCacheType.values[uintbuf.value];
 
   dcl.clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE,
       ffi.sizeOf<ffi.UnsignedLong>(), ulongbuf.cast(), outSize);
-  int localMemSize = ulongbuf.value;
+  final localMemSize = ulongbuf.value;
 
   ffilib.calloc.free(strbuf);
   ffilib.calloc.free(outSize);
   ffilib.calloc.free(ulongbuf);
   ffilib.calloc.free(uintbuf);
-  ffilib.calloc.free(size_tBuffer);
+  ffilib.calloc.free(sizeTbuffer);
   ffilib.calloc.free(dimensionsBuf);
   return Device(
       device,
