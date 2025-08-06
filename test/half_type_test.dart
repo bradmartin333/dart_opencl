@@ -114,7 +114,9 @@ void main() {
 
   test('add half', () {
     const vAddHalf = '''
-__kernel void scalar_add(__global const half2 *A, __global const half2 *B, __global half2 *C) {
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+__kernel void scalar_add(__global const half *A, __global const half *B, __global half *C) {
   int i = get_global_id(0);
   C[i] = A[i] + B[i];
 }
@@ -155,7 +157,7 @@ __kernel void scalar_add(__global const half2 *A, __global const half2 *B, __glo
 
     queue
       ..enqueueNDRangeKernel(vAddHalfKernel, 1,
-          globalWorkSize: [1], localWorkSize: [1])
+          globalWorkSize: [2], localWorkSize: [1])
       ..enqueueReadBuffer(cMem, 0, cBuf.size, cBuf, blocking: true)
       ..flush()
       ..finish()
@@ -181,7 +183,9 @@ __kernel void scalar_add(__global const half2 *A, __global const half2 *B, __glo
 
   test('multiply half', () {
     const vMultiplyHalf = '''
-__kernel void scalar_multiply(__global const half2 *A, __global const half2 *B, __global half2 *C) {
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+__kernel void scalar_multiply(__global const half *A, __global const half *B, __global half *C) {
   int i = get_global_id(0);
   C[i] = A[i] * B[i];
 }
