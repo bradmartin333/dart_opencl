@@ -5,13 +5,6 @@ import 'package:opencl/opencl.dart';
 
 enum DeviceType { cpu, gpu, accel, custom }
 
-class DeviceAndHostTimer {
-  DeviceAndHostTimer(this.deviceTimeStamp, this.hostTimeStamp);
-
-  int deviceTimeStamp;
-  int hostTimeStamp;
-}
-
 const Map<int, DeviceType> deviceTypeMap = {
   CL_DEVICE_TYPE_CPU: DeviceType.cpu,
   CL_DEVICE_TYPE_GPU: DeviceType.gpu,
