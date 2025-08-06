@@ -76,15 +76,11 @@ __kernel void foo(__global const float2 *pos) {
     final vAccessProg = context.createProgramWithSource([vAccessComponents]);
     final buildLog = <String>[];
     vAccessProg.buildProgram(platforms[0].devices, '', buildLog);
-
-    var ok = true;
-    try {
-      vAccessProg.createKernel('foo').release();
-    } catch (e) {
-      ok = false;
-    }
-    expect(ok, false);
-
+    expect(
+      () => vAccessProg.createKernel('foo').release(),
+      throwsA(isA<AssertionError>()),
+    );
+    
     vAccessProg.release();
     posMem.release();
     posBuf.free();
