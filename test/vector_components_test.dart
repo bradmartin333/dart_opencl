@@ -89,4 +89,62 @@ __kernel void foo(__global const float2 *pos) {
     posMem.release();
     posBuf.free();
   });
+
+  test('vector swizzling', () {
+    const vAccessComponents = '''
+__kernel void foo(__global const float4 *pos, __global float2 *ret) {
+  int i = get_global_id(0);
+  float4 vf = pos[i];
+
+  float2 odd = vf.yw;   // vf.odd
+  float2 even = vf.xz;  // vf.even
+
+  float2 result;
+  result.x = vf.x + vf.y + odd.x + odd.y + even.x + even.y;
+  result.y = vf.z + vf.w + odd.x + odd.y + even.x + even.y;
+
+  ret[i] = result;
+}
+''';
+
+    final posBuf = NativeBuffer(sizeOfFloat * 4);
+    final posList = posBuf.byteBuffer.asFloat32List();
+    for (var i = 0; i < 4; i++) {
+      posList[i] = i.toDouble() + 1.0; // [1.0, 2.0, 3.0, 4.0]
+    }
+    final retBuf = NativeBuffer(sizeOfFloat * 2);
+
+    final posMem = context.createBuffer(sizeOfFloat * 4,
+        hostData: posBuf, onlyCopy: true, kernelRead: true);
+    final retMem = context.createBuffer(sizeOfFloat * 2,
+        hostData: retBuf, kernelWrite: true, hostRead: true);
+
+    final vAccessProg = context.createProgramWithSource([vAccessComponents]);
+    final buildLog = <String>[];
+    vAccessProg.buildProgram(platforms[0].devices, '', buildLog);
+
+    final vAccessKernel = vAccessProg.createKernel('foo')
+      ..setKernelArgMem(0, posMem)
+      ..setKernelArgMem(1, retMem);
+
+    queue
+      ..enqueueNDRangeKernel(vAccessKernel, 1,
+          globalWorkSize: [1], localWorkSize: [1])
+      ..enqueueReadBuffer(retMem, 0, retBuf.size, retBuf, blocking: true)
+      ..flush()
+      ..finish()
+      ..release();
+
+    vAccessKernel.release();
+    vAccessProg.release();
+    posMem.release();
+    retMem.release();
+    posBuf.free();
+
+    final ret = retBuf.byteBuffer.asFloat32List();
+    expect(ret[0] == 13.0, true);
+    expect(ret[1] == 17.0, true);
+
+    retBuf.free();
+  });
 }
