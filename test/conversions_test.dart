@@ -1,10 +1,12 @@
 import 'dart:ffi';
+import 'dart:typed_data';
 
 import 'package:opencl/opencl.dart';
 import 'package:test/test.dart';
 
 const sizeOfFloat = 4;
 const sizeOfInt32 = 4;
+const sizeOfUint32 = 4;
 
 void main() {
   late List<Platform> platforms;
@@ -313,14 +315,10 @@ __kernel void foo() {
         context.createProgramWithSource([vIllegalVectorCast1]);
     final buildLog1 = <String>[];
     vIllegalProg1.buildProgram(platforms[0].devices, '', buildLog1);
-
-    var ok1 = true;
-    try {
-      vIllegalProg1.createKernel('foo').release();
-    } catch (e) {
-      ok1 = false;
-    }
-    expect(ok1, false);
+    expect(
+      () => vIllegalProg1.createKernel('foo').release(),
+      throwsA(isA<AssertionError>()),
+    );
     vIllegalProg1.release();
 
     const vIllegalVectorCast2 = '''
@@ -334,14 +332,10 @@ __kernel void foo() {
         context.createProgramWithSource([vIllegalVectorCast2]);
     final buildLog2 = <String>[];
     vIllegalProg2.buildProgram(platforms[0].devices, '', buildLog2);
-
-    var ok2 = true;
-    try {
-      vIllegalProg2.createKernel('foo').release();
-    } catch (e) {
-      ok2 = false;
-    }
-    expect(ok2, false);
+    expect(
+      () => vIllegalProg2.createKernel('foo').release(),
+      throwsA(isA<AssertionError>()),
+    );
     vIllegalProg2.release();
 
     const vIllegalVectorCast3 = '''
@@ -355,14 +349,382 @@ __kernel void foo() {
         context.createProgramWithSource([vIllegalVectorCast3]);
     final buildLog3 = <String>[];
     vIllegalProg3.buildProgram(platforms[0].devices, '', buildLog3);
-
-    var ok3 = true;
-    try {
-      vIllegalProg3.createKernel('foo').release();
-    } catch (e) {
-      ok3 = false;
-    }
-    expect(ok3, false);
+    expect(
+      () => vIllegalProg3.createKernel('foo').release(),
+      throwsA(isA<AssertionError>()),
+    );
     vIllegalProg3.release();
+  });
+
+  group('rounding modes', () {
+    final floatValues = Float32List.fromList([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
+    final sizeOfValues = sizeOfFloat * floatValues.length;
+
+    late NativeBuffer valuesBuf;
+    late NativeBuffer retBuf;
+    late Mem valuesMem;
+    late Mem retMem;
+
+    setUp(() {
+      valuesBuf = NativeBuffer(sizeOfValues);
+      valuesBuf.byteBuffer.asFloat32List().setAll(0, floatValues);
+      retBuf = NativeBuffer(sizeOfInt32 * floatValues.length);
+
+      valuesMem = context.createBuffer(sizeOfValues,
+          hostData: valuesBuf, kernelRead: true);
+      retMem = context.createBuffer(sizeOfInt32 * floatValues.length,
+          hostData: retBuf, kernelWrite: true, hostRead: true);
+    });
+
+    tearDown(() {
+      valuesMem.release();
+      retMem.release();
+      valuesBuf.free();
+      retBuf.free();
+    });
+
+    void runTest(String programSource, List<int> expectedResults) {
+      final program = context.createProgramWithSource([programSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('round_test')
+        ..setKernelArgMem(0, valuesMem)
+        ..setKernelArgMem(1, retMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [floatValues.length], localWorkSize: [1])
+        ..enqueueReadBuffer(retMem, 0, retBuf.size, retBuf, blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+
+      final results = retBuf.byteBuffer.asInt32List();
+      expect(results, orderedEquals(expectedResults));
+    }
+
+    test('_rte (round to nearest even)', () {
+      const programSource = '''
+__kernel void round_test(__global float* values, __global int* ret) {
+  int gid = get_global_id(0);
+  ret[gid] = convert_int_rte(values[gid]);
+}
+''';
+      runTest(programSource, [-2, -2, 0, 0, 2, 2]);
+    });
+
+    test('_rtz (round toward zero)', () {
+      const programSource = '''
+__kernel void round_test(__global float* values, __global int* ret) {
+  int gid = get_global_id(0);
+  ret[gid] = convert_int_rtz(values[gid]);
+  }
+''';
+      runTest(programSource, [-2, -1, 0, 0, 1, 2]);
+    });
+
+    test('_rtp (round toward positive infinity)', () {
+      const programSource = '''
+__kernel void round_test(__global float* values, __global int* ret) {
+  int gid = get_global_id(0);
+  ret[gid] = convert_int_rtp(values[gid]);
+}
+''';
+      runTest(programSource, [-2, -1, 0, 1, 2, 3]);
+    });
+
+    test('_rtn (round toward negative infinity)', () {
+      const programSource = '''
+__kernel void round_test(__global float* values, __global int* ret) {
+  int gid = get_global_id(0);
+  ret[gid] = convert_int_rtn(values[gid]);
+}
+''';
+      runTest(programSource, [-3, -2, -1, 0, 1, 2]);
+    });
+
+    test('default rounding mode (round toward zero)', () {
+      const programSource = '''
+__kernel void round_test(__global float* values, __global int* ret) {
+  int gid = get_global_id(0);
+  ret[gid] = (int)values[gid];
+}
+''';
+      runTest(programSource, [-2, -1, 0, 0, 1, 2]);
+    });
+  });
+
+  group('data reinterpretation', () {
+    test('masking off sign bit of a float', () {
+      const kernelSource = '''
+__kernel void mask_sign_bit(__global float *input_f, __global float *output_f) {
+  float f = input_f[0];
+  uint u = as_uint(f);
+  f = as_float(u & ~(1 << 31));
+  output_f[0] = f;
+}
+''';
+
+      final inputBuf = NativeBuffer(sizeOfFloat);
+      inputBuf.byteBuffer.asFloat32List()[0] =
+          -1.0; // IEEE 754 for -1.0 is 0xBF800000
+      final outputBuf = NativeBuffer(sizeOfFloat);
+
+      final inputMem = context.createBuffer(sizeOfFloat,
+          hostData: inputBuf, kernelRead: true);
+      final outputMem = context.createBuffer(sizeOfFloat,
+          hostData: outputBuf, kernelWrite: true, hostRead: true);
+
+      final program = context.createProgramWithSource([kernelSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('mask_sign_bit')
+        ..setKernelArgMem(0, inputMem)
+        ..setKernelArgMem(1, outputMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [1], localWorkSize: [1])
+        ..enqueueReadBuffer(outputMem, 0, outputBuf.size, outputBuf,
+            blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+      inputMem.release();
+      outputMem.release();
+
+      // Expected output: 1.0 (sign bit masked off from -1.0)
+      expect(outputBuf.byteBuffer.asFloat32List()[0], 1.0);
+
+      inputBuf.free();
+      outputBuf.free();
+    });
+
+    test('reinterpret uint as float (0x3f800000 to 1.0f)', () {
+      const kernelSource = '''
+__kernel void uint_to_float(__global uint *input_u, __global float *output_f) {
+  uint u = input_u[0];
+  float f = as_float(u);
+  output_f[0] = f;
+}
+''';
+
+      final inputBuf = NativeBuffer(sizeOfUint32);
+      inputBuf.byteBuffer.asUint32List()[0] = 0x3f800000; // Represents 1.0f
+      final outputBuf = NativeBuffer(sizeOfFloat);
+
+      final inputMem = context.createBuffer(sizeOfUint32,
+          hostData: inputBuf, kernelRead: true);
+      final outputMem = context.createBuffer(sizeOfFloat,
+          hostData: outputBuf, kernelWrite: true, hostRead: true);
+
+      final program = context.createProgramWithSource([kernelSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('uint_to_float')
+        ..setKernelArgMem(0, inputMem)
+        ..setKernelArgMem(1, outputMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [1], localWorkSize: [1])
+        ..enqueueReadBuffer(outputMem, 0, outputBuf.size, outputBuf,
+            blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+      inputMem.release();
+      outputMem.release();
+
+      expect(outputBuf.byteBuffer.asFloat32List()[0], 1.0);
+
+      inputBuf.free();
+      outputBuf.free();
+    });
+
+    test('reinterpret float4 as int4', () {
+      const kernelSource = '''
+__kernel void float4_to_int4(__global float4 *input_f4, __global int4 *output_i4) {
+  float4 f = input_f4[0];
+  int4 i = as_int4(f);
+  output_i4[0] = i;
+}
+''';
+
+      final inputBuf = NativeBuffer(sizeOfFloat * 4);
+      inputBuf.byteBuffer.asFloat32List().setAll(0, [1.0, 2.0, 3.0, 4.0]);
+      final outputBuf = NativeBuffer(sizeOfInt32 * 4);
+
+      final inputMem = context.createBuffer(sizeOfFloat * 4,
+          hostData: inputBuf, kernelRead: true);
+      final outputMem = context.createBuffer(sizeOfInt32 * 4,
+          hostData: outputBuf, kernelWrite: true, hostRead: true);
+
+      final program = context.createProgramWithSource([kernelSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('float4_to_int4')
+        ..setKernelArgMem(0, inputMem)
+        ..setKernelArgMem(1, outputMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [1], localWorkSize: [1])
+        ..enqueueReadBuffer(outputMem, 0, outputBuf.size, outputBuf,
+            blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+      inputMem.release();
+      outputMem.release();
+
+      final expectedIntValues = Int32List.fromList([
+        0x3f800000, // 1.0f
+        0x40000000, // 2.0f
+        0x40400000, // 3.0f
+        0x40800000 // 4.0f
+      ]);
+      expect(
+          outputBuf.byteBuffer.asInt32List(), orderedEquals(expectedIntValues));
+
+      inputBuf.free();
+      outputBuf.free();
+    });
+
+    test('ternary selection operator with as_typen', () {
+      const kernelSource = '''
+__kernel void ternary_select(__global float4 *f_in, __global float4 *g_in, __global float4 *f_out) {
+  float4 f = f_in[0];
+  float4 g = g_in[0];
+  int4 is_less = f < g; // Each component will be 0 if false, -1 (all bits set) if true.
+  f = as_float4(as_int4(f) & is_less);
+  f_out[0] = f;
+}
+''';
+
+      final fInBuf = NativeBuffer(sizeOfFloat * 4);
+      fInBuf.byteBuffer.asFloat32List().setAll(0, [10.0, 2.0, 30.0, 4.0]);
+      final gInBuf = NativeBuffer(sizeOfFloat * 4);
+      gInBuf.byteBuffer.asFloat32List().setAll(0, [5.0, 15.0, 25.0, 40.0]);
+      final fOutBuf = NativeBuffer(sizeOfFloat * 4);
+
+      final fInMem = context.createBuffer(sizeOfFloat * 4,
+          hostData: fInBuf, kernelRead: true);
+      final gInMem = context.createBuffer(sizeOfFloat * 4,
+          hostData: gInBuf, kernelRead: true);
+      final fOutMem = context.createBuffer(sizeOfFloat * 4,
+          hostData: fOutBuf, kernelWrite: true, hostRead: true);
+
+      final program = context.createProgramWithSource([kernelSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('ternary_select')
+        ..setKernelArgMem(0, fInMem)
+        ..setKernelArgMem(1, gInMem)
+        ..setKernelArgMem(2, fOutMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [1], localWorkSize: [1])
+        ..enqueueReadBuffer(fOutMem, 0, fOutBuf.size, fOutBuf, blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+      fInMem.release();
+      gInMem.release();
+      fOutMem.release();
+
+      // f < g: [false, true, false, true]
+      // Expected f: [0.0, 2.0, 0.0, 4.0]
+      expect(fOutBuf.byteBuffer.asFloat32List(),
+          orderedEquals([0.0, 2.0, 0.0, 4.0]));
+
+      fInBuf.free();
+      gInBuf.free();
+      fOutBuf.free();
+    });
+
+    test('legal 4-component to 3-component vector reinterpretation', () {
+      const kernelSource = '''
+__kernel void float4_to_float3(__global float4 *input_f4, __global float3 *output_f3) {
+  float4 f = input_f4[0];
+  float3 g = as_float3(f); // g.xyz will have same values as f.xyz. g.w is undefined.
+  output_f3[0] = g;
+}
+''';
+
+      final inputBuf = NativeBuffer(sizeOfFloat * 4);
+      inputBuf.byteBuffer.asFloat32List().setAll(0, [1.1, 2.2, 3.3, 4.4]);
+      final outputBuf = NativeBuffer(sizeOfFloat * 3);
+
+      final inputMem = context.createBuffer(sizeOfFloat * 4,
+          hostData: inputBuf, kernelRead: true);
+      final outputMem = context.createBuffer(sizeOfFloat * 3,
+          hostData: outputBuf, kernelWrite: true, hostRead: true);
+
+      final program = context.createProgramWithSource([kernelSource])
+        ..buildProgram(platforms[0].devices, '', <String>[]);
+
+      final kernel = program.createKernel('float4_to_float3')
+        ..setKernelArgMem(0, inputMem)
+        ..setKernelArgMem(1, outputMem);
+
+      queue
+        ..enqueueNDRangeKernel(kernel, 1,
+            globalWorkSize: [1], localWorkSize: [1])
+        ..enqueueReadBuffer(outputMem, 0, outputBuf.size, outputBuf,
+            blocking: true)
+        ..flush()
+        ..finish()
+        ..release();
+
+      kernel.release();
+      program.release();
+      inputMem.release();
+      outputMem.release();
+
+      final outputList = outputBuf.byteBuffer.asFloat32List();
+      expect(outputList.length, 3);
+      expect(outputList[0].toStringAsFixed(1), '1.1');
+      expect(outputList[1].toStringAsFixed(1), '2.2');
+      expect(outputList[2].toStringAsFixed(1), '3.3');
+
+      inputBuf.free();
+      outputBuf.free();
+    });
+
+    test('illegal explicit vector casts (different sizes - float4 to double4)',
+        () {
+      const kernelSource = '''
+__kernel void illegal_cast_float4_to_double4() {
+  float4 f;
+  double4 g = as_double4(f); // Error. Result and operand have different sizes.
+}
+''';
+
+      final program = context.createProgramWithSource([kernelSource]);
+      final buildLog = <String>[];
+      program.buildProgram(platforms[0].devices, '', buildLog);
+      expect(
+        () => program.createKernel('illegal_cast_float4_to_double4').release(),
+        throwsA(isA<AssertionError>()),
+      );
+      program.release();
+    });
   });
 }
