@@ -15,10 +15,39 @@ class Platform {
   String version;
   String name;
   String vendor;
-
-  /// in nano seconds
   int hostTimerResolution;
   List<String> extensions;
+}
+
+String getPlatformStringInfo(
+    cl_platform_id platform, OpenCL dcl, int paramName) {
+  // query the size of the string
+  final outSize = ffilib.calloc<ffi.Size>();
+  var ret = dcl.clGetPlatformInfo(platform, paramName, 0, ffi.nullptr, outSize);
+  if (ret != CL_SUCCESS) {
+    throw Exception(
+        'Failed to get platform info size for $paramName with error $ret');
+  }
+
+  // allocate a buffer and get the string data
+  final strBuf =
+      ffilib.calloc<ffi.Char>(outSize.value + 1); // +1 for null terminator
+  ret = dcl.clGetPlatformInfo(
+      platform, paramName, outSize.value, strBuf.cast(), ffi.nullptr);
+  if (ret != CL_SUCCESS) {
+    ffilib.calloc.free(strBuf);
+    throw Exception(
+        'Failed to get platform info for $paramName with error $ret');
+  }
+
+  // convert the C string to a Dart string
+  final result = strBuf.cast<ffilib.Utf8>().toDartString();
+
+  // free the allocated memory
+  ffilib.calloc.free(strBuf);
+  ffilib.calloc.free(outSize);
+
+  return result;
 }
 
 Platform createPlatform(cl_platform_id platform, OpenCL dcl) {
@@ -28,46 +57,28 @@ Platform createPlatform(cl_platform_id platform, OpenCL dcl) {
   final devicesList = ffilib.calloc<cl_device_id>(numDevices.value);
   dcl.clGetDeviceIDs(
       platform, CL_DEVICE_TYPE_ALL, numDevices.value, devicesList, numDevices);
+
   final devices = List.generate(
       numDevices.value, (index) => createDevice(devicesList[index], dcl));
-  //free used memory
+
   ffilib.calloc.free(numDevices);
   ffilib.calloc.free(devicesList);
-  //I hope that's enough...
-  const bufsize = 4096;
-  final strbuf = ffilib.calloc<ffi.Int8>(bufsize).cast();
-  final outSize = ffilib.calloc<ffi.Size>();
+
+  final profile = getPlatformStringInfo(platform, dcl, CL_PLATFORM_PROFILE);
+  final version = getPlatformStringInfo(platform, dcl, CL_PLATFORM_VERSION);
+  final name = getPlatformStringInfo(platform, dcl, CL_PLATFORM_NAME);
+  final vendor = getPlatformStringInfo(platform, dcl, CL_PLATFORM_VENDOR);
+  final extensionsString =
+      getPlatformStringInfo(platform, dcl, CL_PLATFORM_EXTENSIONS);
+  final extensions = extensionsString.split(' ');
+
   final uLongBuf = ffilib.calloc<ffi.UnsignedLong>();
-
-  dcl.clGetPlatformInfo(
-      platform, CL_PLATFORM_PROFILE, bufsize, strbuf.cast(), outSize);
-  final profile = strbuf.toString();
-
-  dcl.clGetPlatformInfo(
-      platform, CL_PLATFORM_VERSION, bufsize, strbuf.cast(), outSize);
-  final version = strbuf.toString();
-
-  //get platform name
-  dcl.clGetPlatformInfo(
-      platform, CL_PLATFORM_NAME, bufsize, strbuf.cast(), outSize);
-  final name = strbuf.toString();
-
-  //get platform vendor
-  dcl.clGetPlatformInfo(
-      platform, CL_PLATFORM_VENDOR, bufsize, strbuf.cast(), outSize);
-  final vendor = strbuf.toString();
-
-  //get platform extensions
-  dcl.clGetPlatformInfo(
-      platform, CL_PLATFORM_EXTENSIONS, bufsize, strbuf.cast(), outSize);
-  final extensions = strbuf.toString().split(RegExp(' [a-zA-Z]'));
+  final outSize = ffilib.calloc<ffi.Size>();
 
   dcl.clGetPlatformInfo(platform, CL_PLATFORM_HOST_TIMER_RESOLUTION,
       ffi.sizeOf<ffi.UnsignedLong>(), uLongBuf.cast(), outSize);
   final hostTimerResolution = uLongBuf.value;
 
-  //free used memory
-  ffilib.calloc.free(strbuf);
   ffilib.calloc.free(outSize);
   ffilib.calloc.free(uLongBuf);
 

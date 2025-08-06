@@ -40,10 +40,6 @@ void main() {
           print(device.vendor);
           print(device.extensions);
           print(device.toJson());
-          // FIXMEnot working
-          // final timer = device.getDeviceAndHostTimer();
-          // print(timer.deviceTimeStamp);
-          // print(timer.hostTimeStamp);
         }
       });
     final context = cl.createContext(platforms[0].devices);

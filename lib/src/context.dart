@@ -20,23 +20,31 @@ class Context {
     assert(ret == CL_SUCCESS);
   }
 
-  CommandQueue createCommandQueue(Device device, {bool outOfOrder = false}) {
+  CommandQueue createCommandQueue(Device device,
+      {bool outOfOrder = true, bool enableProfiling = false}) {
     final errcodeRet = ffilib.calloc<ffi.Int32>();
-    final properties =
-        ffilib.calloc<ffi.UnsignedLong>(3) as ffi.Pointer<ffi.Uint64>;
-    var lastProperty = 0;
+
+    var propertiesBitfield = 0;
     if (outOfOrder) {
-      properties[0] = CL_QUEUE_PROPERTIES;
-      properties[1] = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
-      lastProperty = 2;
+      propertiesBitfield |= CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
     }
-    properties[lastProperty] = 0;
+    if (enableProfiling) {
+      propertiesBitfield |= CL_QUEUE_PROFILING_ENABLE;
+    }
+
+    final properties = ffilib.calloc<ffi.Uint64>(3);
+    properties[0] = CL_QUEUE_PROPERTIES;
+    properties[1] = propertiesBitfield;
+    properties[2] = 0;
+
     final commandQueue = dcl.clCreateCommandQueueWithProperties(
         context, device.device, properties, errcodeRet);
+
     assert(errcodeRet.value == CL_SUCCESS);
 
     ffilib.calloc.free(errcodeRet);
     ffilib.calloc.free(properties);
+
     return CommandQueue(commandQueue, dcl);
   }
 

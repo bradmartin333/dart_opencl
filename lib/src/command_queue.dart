@@ -117,7 +117,7 @@ class CommandQueue {
     if (eventWaitListPtr != ffi.nullptr) {
       ffilib.calloc.free(eventWaitListPtr);
     }
-    if (event != ffi.nullptr) {
+    if (event != ffi.nullptr && !createEvent) {
       ffilib.calloc.free(event);
     }
     return eventObj;
@@ -193,13 +193,31 @@ class CommandQueue {
 
     Event? eventObj;
     if (createEvent) {
-      eventObj = Event(event.value, dcl);
+      final eventToWaitFor = ffilib.calloc<cl_event>()..value = event.value;
+      dcl.clWaitForEvents(1, eventToWaitFor);
+      ffilib.calloc.free(eventToWaitFor);
+
+      final startBuf = ffilib.calloc<cl_ulong>();
+      final endBuf = ffilib.calloc<cl_ulong>();
+      dcl
+        ..clGetEventProfilingInfo(event.value, CL_PROFILING_COMMAND_START,
+            ffi.sizeOf<cl_ulong>(), startBuf.cast(), ffi.nullptr)
+        ..clGetEventProfilingInfo(event.value, CL_PROFILING_COMMAND_END,
+            ffi.sizeOf<cl_ulong>(), endBuf.cast(), ffi.nullptr);
+      final startTime = startBuf.value;
+      final endTime = endBuf.value;
+      final executionTimeNs = endTime - startTime;
+
+      ffilib.calloc.free(startBuf);
+      ffilib.calloc.free(endBuf);
+
+      eventObj = Event(event.value, dcl, executionTimeNs: executionTimeNs);
     }
 
     if (eventWaitListPtr != ffi.nullptr) {
       ffilib.calloc.free(eventWaitListPtr);
     }
-    if (event != ffi.nullptr) {
+    if (event != ffi.nullptr && !createEvent) {
       ffilib.calloc.free(event);
     }
     return eventObj;

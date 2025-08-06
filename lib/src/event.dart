@@ -1,10 +1,11 @@
 import 'package:opencl/opencl.dart';
 
 class Event {
-  Event(this.event, this.dcl);
+  Event(this.event, this.dcl, {this.executionTimeNs = 0});
 
   cl_event event;
   OpenCL dcl;
+  int executionTimeNs;
 
   void retain() {
     final ret = dcl.clRetainEvent(event);

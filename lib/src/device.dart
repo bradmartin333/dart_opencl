@@ -295,18 +295,6 @@ class Device {
       'localMemSize': localMemSize
     };
   }
-
-  DeviceAndHostTimer getDeviceAndHostTimer() {
-    final deviceHostBuf =
-        ffilib.calloc<ffi.UnsignedLong>(2) as ffi.Pointer<ffi.Uint64>;
-    final ret =
-        dcl.clGetDeviceAndHostTimer(device, deviceHostBuf, deviceHostBuf + 1);
-    assert(ret == CL_SUCCESS);
-    final timer =
-        DeviceAndHostTimer(deviceHostBuf.value, (deviceHostBuf + 1).value);
-    ffilib.calloc.free(deviceHostBuf);
-    return timer;
-  }
 }
 
 Device createDevice(cl_device_id device, OpenCL dcl) {
